@@ -1,6 +1,8 @@
 import 'package:flame/game.dart';
+import 'package:flutter/material.dart';
 import '../models/player.dart';
 import '../models/item.dart';
+import '../phases/shop_phase.dart';
 
 enum GamePhase { shop, combat }
 
@@ -12,7 +14,11 @@ class HeroGame extends FlameGame {
   @override
   Future<void> onLoad() async {
     player = Player();
+    player.gold = 10; // Set initial gold to 10
     _generateShopItems();
+    
+    // Add the shop phase overlay
+    overlays.add('shop');
   }
 
   void _generateShopItems() {
@@ -33,12 +39,15 @@ class HeroGame extends FlameGame {
 
   void startCombat() {
     phase = GamePhase.combat;
+    overlays.remove('shop');
+    // TODO: Add combat overlay
     // TODO: Implement combat resolution
   }
 
   void endCombat() {
     phase = GamePhase.shop;
     _generateShopItems();
+    overlays.add('shop');
     // TODO: Reward gold based on outcome
   }
 }
