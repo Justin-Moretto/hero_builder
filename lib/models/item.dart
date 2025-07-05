@@ -1,6 +1,6 @@
 class Item {
   final String name;
-  final int size; // number of tiles this item occupies
+  final int size; // number of tiles this item occupies (1-3)
   final int damage;
   final int cost;
 
