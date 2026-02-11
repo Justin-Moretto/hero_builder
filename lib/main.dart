@@ -1,18 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flame/game.dart';
-import 'game/hero_game.dart';
-import 'phases/shop_phase.dart';
+
+import 'game/world_state.dart';
+import 'models/player.dart';
+import 'phases/world_phase.dart';
+import 'widgets/character_sheet_overlay.dart';
+import 'widgets/game_top_bar.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Force landscape orientation
-  SystemChrome.setPreferredOrientations([
-    DeviceOrientation.landscapeLeft,
-    DeviceOrientation.landscapeRight,
-  ]);
-  
   runApp(const HeroBuilderApp());
 }
 
@@ -27,40 +22,59 @@ class HeroBuilderApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         brightness: Brightness.dark,
       ),
-      home: const GameScreen(),
+      home: const WorldScreen(),
     );
   }
 }
 
-class GameScreen extends StatefulWidget {
-  const GameScreen({super.key});
+/// Initial screen: world map with biome + event nodes + travel. No Flame, loads immediately.
+class WorldScreen extends StatefulWidget {
+  const WorldScreen({super.key});
 
   @override
-  State<GameScreen> createState() => _GameScreenState();
+  State<WorldScreen> createState() => _WorldScreenState();
 }
 
-class _GameScreenState extends State<GameScreen> {
-  late HeroGame game;
+class _WorldScreenState extends State<WorldScreen> {
+  late final WorldState worldState;
+  late final Player player;
+  CharacterPanelState _characterPanelState = CharacterPanelState.closed;
 
   @override
   void initState() {
     super.initState();
-    game = HeroGame();
+    worldState = WorldState();
+    player = Player();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: GameWidget(
-        game: game,
-        overlayBuilderMap: {
-          'shop': (context, game) => ShopPhase(
-            player: (game as HeroGame).player,
-            shopItems: (game as HeroGame).shopItems,
-            onBuyItem: (game as HeroGame).buyItem,
-            onStartCombat: (game as HeroGame).startCombat,
+      backgroundColor: Colors.grey[900],
+      body: Stack(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              GameTopBar(
+                player: player,
+                onCharacterPressed: () {
+                  setState(() {
+                    _characterPanelState = _characterPanelState == CharacterPanelState.maximized
+                        ? CharacterPanelState.closed
+                        : CharacterPanelState.maximized;
+                  });
+                },
+              ),
+              Expanded(child: WorldPhase(state: worldState)),
+            ],
           ),
-        },
+          CharacterSheetOverlay(
+            panelState: _characterPanelState,
+            onPanelStateChanged: (state) => setState(() => _characterPanelState = state),
+            player: player,
+          ),
+        ],
       ),
     );
   }

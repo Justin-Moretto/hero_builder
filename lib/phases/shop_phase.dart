@@ -2,14 +2,14 @@
 // TODO: Implement user interface for buying and upgrading items
 
 import 'package:flutter/material.dart';
-import '../models/item.dart';
+import '../models/item_model.dart';
 import '../models/player.dart';
 import 'dart:async';
 
 class ShopPhase extends StatefulWidget {
   final Player player;
-  final List<Item> shopItems;
-  final Function(Item) onBuyItem;
+  final List<ItemModel> shopItems;
+  final Function(ItemModel) onBuyItem;
   final VoidCallback onStartCombat;
 
   const ShopPhase({
@@ -25,6 +25,15 @@ class ShopPhase extends StatefulWidget {
 }
 
 class _ShopPhaseState extends State<ShopPhase> {
+  final GlobalKey _boardKey = GlobalKey();
+  
+  // Drag and drop state
+  ItemModel? _draggedItem;
+  int? _draggedItemIndex;
+  Offset? _dragOffset;
+  int? _hoveredSlotIndex;
+  
+  // Message display
   String? _message;
   Timer? _messageTimer;
 
@@ -38,6 +47,7 @@ class _ShopPhaseState extends State<ShopPhase> {
     setState(() {
       _message = message;
     });
+    
     _messageTimer?.cancel();
     _messageTimer = Timer(const Duration(seconds: 2), () {
       setState(() {
@@ -46,109 +56,44 @@ class _ShopPhaseState extends State<ShopPhase> {
     });
   }
 
-  // Find the nearest empty space starting from a given index, preferring a specific direction
-  int? _findNearestEmptySpace(int startIndex, {int? preferredDirection}) {
-    if (widget.player.board[startIndex] == null) {
-      return startIndex; // Already empty
-    }
-    
-    // Check adjacent spaces first
-    List<int> adjacentIndices = [];
-    if (startIndex - 1 >= 0) adjacentIndices.add(startIndex - 1);
-    if (startIndex + 1 < widget.player.board.length) adjacentIndices.add(startIndex + 1);
-    
-    // If we have a preferred direction, prioritize that direction
-    if (preferredDirection != null) {
-      adjacentIndices.sort((a, b) {
-        int aDirection = a > startIndex ? 1 : -1;
-        int bDirection = b > startIndex ? 1 : -1;
-        if (aDirection == preferredDirection && bDirection != preferredDirection) return -1;
-        if (aDirection != preferredDirection && bDirection == preferredDirection) return 1;
-        return 0;
-      });
-    }
-    
-    // Check adjacent spaces first
-    for (int index in adjacentIndices) {
-      if (widget.player.board[index] == null) {
-        return index;
+  // Handle dropping an item on the board
+  void _handleDropOnBoard(int targetIndex, ItemModel item, bool isFromShop) {
+    setState(() {
+      // If this is a board-to-board move, ignore the item being moved
+      String? ignoreItemKey = (_draggedItemIndex != null && item == _draggedItem) ? item.key : null;
+      
+      if (!widget.player.placeItem(item, targetIndex, ignoreItemKey: ignoreItemKey)) {
+        _showMessage("Not enough space on the board for this item");
+        return;
       }
-    }
-    
-    // If no adjacent space, expand outward
-    List<int> indicesToCheck = [];
-    for (int distance = 2; distance < widget.player.board.length; distance++) {
-      // Check in preferred direction first, then opposite
-      if (preferredDirection != null) {
-        if (preferredDirection > 0 && startIndex + distance < widget.player.board.length) {
-          indicesToCheck.add(startIndex + distance);
-        }
-        if (preferredDirection < 0 && startIndex - distance >= 0) {
-          indicesToCheck.add(startIndex - distance);
-        }
-        if (preferredDirection > 0 && startIndex - distance >= 0) {
-          indicesToCheck.add(startIndex - distance);
-        }
-        if (preferredDirection < 0 && startIndex + distance < widget.player.board.length) {
-          indicesToCheck.add(startIndex + distance);
-        }
-      } else {
-        // No preferred direction, check both sides
-        if (startIndex - distance >= 0) {
-          indicesToCheck.add(startIndex - distance);
-        }
-        if (startIndex + distance < widget.player.board.length) {
-          indicesToCheck.add(startIndex + distance);
-        }
+      
+      // Handle cost if from shop
+      if (isFromShop) {
+        widget.player.gold -= item.cost;
       }
-    }
-    
-    // Check each index for empty space
-    for (int index in indicesToCheck) {
-      if (widget.player.board[index] == null) {
-        return index;
-      }
-    }
-    
-    return null; // No empty space found
+      
+      // Clear hover state
+      _hoveredSlotIndex = null;
+    });
   }
 
-  // Move tiles to make space for a new item at targetIndex
-  bool _makeSpaceForItem(int targetIndex, {int? preferredDirection}) {
-    if (widget.player.board[targetIndex] == null) {
-      return true; // Already empty
-    }
-    
-    // Find nearest empty space with preferred direction
-    int? emptySpace = _findNearestEmptySpace(targetIndex, preferredDirection: preferredDirection);
-    if (emptySpace == null) {
-      return false; // No space available
-    }
-    
-    // Calculate the direction to move tiles
-    int direction = emptySpace > targetIndex ? 1 : -1;
-    
-    // Start from the empty space and work backwards to create a chain of movements
-    int currentIndex = emptySpace;
-    
-    // Move tiles from the target position toward the empty space
-    while (currentIndex != targetIndex) {
-      int previousIndex = currentIndex - direction;
-      if (previousIndex >= 0 && previousIndex < widget.player.board.length) {
-        widget.player.board[currentIndex] = widget.player.board[previousIndex];
-        widget.player.board[previousIndex] = null;
-        currentIndex = previousIndex;
-      } else {
-        break;
-      }
-    }
-    
-    return true;
+  // Handle starting drag from board
+  void _startDragFromBoard(ItemModel item, int index, Offset localPosition) {
+    setState(() {
+      _draggedItem = item;
+      _draggedItemIndex = index;
+      _dragOffset = Offset(localPosition.dx, localPosition.dy);
+    });
   }
 
-  // Check if there's any space available on the board
-  bool _hasSpaceOnBoard() {
-    return widget.player.board.any((item) => item == null);
+  // Handle ending drag
+  void _endDrag() {
+    setState(() {
+      _draggedItem = null;
+      _draggedItemIndex = null;
+      _dragOffset = null;
+      _hoveredSlotIndex = null;
+    });
   }
 
   @override
@@ -186,24 +131,19 @@ class _ShopPhaseState extends State<ShopPhase> {
                   ),
                   const SizedBox(height: 6),
                   
-                  // Shop area - fixed size container
+                  // Shop area
                   Container(
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.transparent, width: 3),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: DragTarget<Item>(
+                    child: DragTarget<ItemModel>(
                       onWillAccept: (data) => data != null,
                       onAccept: (data) {
                         setState(() {
-                          widget.player.gold += 1; // Refund 1 gold
+                          widget.player.gold += data.cost; // Refund cost
                           // Remove item from board
-                          for (int i = 0; i < widget.player.board.length; i++) {
-                            if (widget.player.board[i] == data) {
-                              widget.player.board[i] = null;
-                              break;
-                            }
-                          }
+                          widget.player.removeItem(data.key);
                         });
                       },
                       builder: (context, candidateData, rejectedData) {
@@ -239,7 +179,7 @@ class _ShopPhaseState extends State<ShopPhase> {
                                 const Padding(
                                   padding: EdgeInsets.only(top: 4.0),
                                   child: Text(
-                                    'DROP HERE TO SELL FOR +1 GOLD',
+                                    'DROP HERE TO SELL',
                                     style: TextStyle(
                                       color: Colors.yellow,
                                       fontSize: 9,
@@ -258,33 +198,52 @@ class _ShopPhaseState extends State<ShopPhase> {
                   
                   // Player board
                   Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.green[800],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.only(top: 4.0, bottom: 4.0),
-                            child: Text(
-                              'YOUR BOARD',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                    child: GestureDetector(
+                      onPanUpdate: (details) {
+                        if (_draggedItem != null && _dragOffset != null) {
+                          // Calculate which slot the dragged item's left edge is hovering over
+                          final RenderBox renderBox = _boardKey.currentContext!.findRenderObject() as RenderBox;
+                          final localPosition = renderBox.globalToLocal(details.globalPosition);
+                          final itemLeftEdge = localPosition.dx - _dragOffset!.dx;
+                          final slotWidth = renderBox.size.width / widget.player.board.length;
+                          final hoveredSlot = (itemLeftEdge / slotWidth).floor();
+                          
+                          if (hoveredSlot != _hoveredSlotIndex) {
+                            setState(() {
+                              _hoveredSlotIndex = hoveredSlot;
+                            });
+                          }
+                        }
+                      },
+                      child: Container(
+                        key: _boardKey,
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.green[800],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          children: [
+                            const Padding(
+                              padding: EdgeInsets.only(top: 4.0, bottom: 4.0),
+                              child: Text(
+                                'YOUR BOARD',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Expanded(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: List.generate(10, (index) => _buildBoardTile(index)),
+                            const SizedBox(height: 4),
+                            Expanded(
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: List.generate(10, (index) => _buildBoardSlot(index)),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -342,84 +301,100 @@ class _ShopPhaseState extends State<ShopPhase> {
     );
   }
 
-  Widget _buildShopItem(Item item) {
+  Widget _buildShopItem(ItemModel item) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 1),
-      child: Draggable<Item>(
-        data: item,
-        feedback: _buildItemWidget(item, Colors.blue[600]!),
-        childWhenDragging: _buildItemWidget(item, Colors.grey[600]!),
-        child: _buildItemWidget(item, Colors.blue[400]!),
+      margin: EdgeInsets.zero,
+      child: GestureDetector(
+        onPanStart: (details) {
+          setState(() {
+            _draggedItem = item;
+            _dragOffset = details.localPosition;
+          });
+        },
+        onPanEnd: (details) {
+          _endDrag();
+        },
+        child: Draggable<ItemModel>(
+          data: item,
+          feedback: Material(
+            color: Colors.transparent,
+            child: _buildItemWidget(item, Colors.blue[600]!),
+          ),
+          childWhenDragging: _buildItemWidget(item, Colors.grey[600]!),
+          child: _buildItemWidget(item, Colors.blue[400]!),
+        ),
       ),
     );
   }
 
-  Widget _buildBoardTile(int index) {
-    final item = widget.player.board[index];
+  Widget _buildBoardSlot(int index) {
+    final item = widget.player.getItemAtSlot(index);
     
-    return DragTarget<Item>(
+    // Check if this slot should render the item (to avoid duplicates for multi-slot items)
+    bool shouldShowItem = widget.player.shouldRenderItemAtSlot(index);
+    
+    // Check if this slot should be highlighted/raised during drag
+    String? ignoreItemKey = (_draggedItemIndex != null && _draggedItem != null) ? _draggedItem!.key : null;
+    bool shouldHighlight = widget.player.shouldHighlightSlot(index, _draggedItem, _hoveredSlotIndex, ignoreItemKey: ignoreItemKey);
+    
+    return DragTarget<ItemModel>(
       onWillAccept: (data) => data != null,
       onAccept: (data) {
-        setState(() {
-          // Check if it's a new item from shop
-          bool isNewItem = !widget.player.board.contains(data);
-          
-          if (isNewItem) {
-            // Check if there's any space on the board
-            if (!_hasSpaceOnBoard()) {
-              _showMessage("Not enough space on the board for this item");
-              return; // Don't make purchase, item stays in shop
-            }
-            
-            // For shop items, default to left direction (-1)
-            if (_makeSpaceForItem(index, preferredDirection: -1)) {
-              widget.player.gold -= 1; // Cost 1 gold
-              widget.player.board[index] = data;
-            } else {
-              _showMessage("Not enough space on the board for this item");
-            }
-          } else {
-            // It's a move operation from board to board
-            int originalIndex = widget.player.board.indexOf(data);
-            if (originalIndex != -1 && originalIndex != index) {
-              // Calculate the direction the item came from
-              int direction = index > originalIndex ? 1 : -1;
-              
-              // Remove item from original position
-              widget.player.board[originalIndex] = null;
-              
-              // Try to make space for the moved item, preferring the direction it came from
-              if (_makeSpaceForItem(index, preferredDirection: direction)) {
-                widget.player.board[index] = data;
-              } else {
-                // If we can't make space, put the item back where it was
-                widget.player.board[originalIndex] = data;
-                _showMessage("Not enough space on the board for this item");
-              }
-            }
+        // If this is the same item being dragged from the board
+        if (_draggedItemIndex != null && data == _draggedItem) {
+          // Check if we're dropping to the same position or an adjacent empty space
+          if (index == _draggedItemIndex || 
+              (index >= _draggedItemIndex! - 1 && index <= _draggedItemIndex! + data.slotsToOccupy)) {
+            // Just place it back in the original position without calling _handleDropOnBoard
+            widget.player.placeItem(data, _draggedItemIndex!, ignoreItemKey: data.key);
+            return;
           }
-        });
+          
+          // Remove the item from its original position for actual moves
+          widget.player.removeItem(data.key);
+        }
+        
+        _handleDropOnBoard(index, data, _draggedItemIndex == null);
+      },
+      onMove: (details) {
+        // Drag tracking is now handled at the board level
       },
       builder: (context, candidateData, rejectedData) {
+        final ItemModel? slotItem = item;
+        final bool showItem = shouldShowItem && slotItem != null;
         return Container(
-          width: 50,
+          width: showItem && slotItem.slotsToOccupy > 1 ? (50 * slotItem.slotsToOccupy).toDouble() : 50,
           height: 70,
-          margin: const EdgeInsets.symmetric(horizontal: 1),
+          margin: EdgeInsets.zero,
+          transform: shouldHighlight ? Matrix4.translationValues(0, -5, 0) : null,
           decoration: BoxDecoration(
-            color: item != null 
-                ? Colors.green[400] 
-                : candidateData.isNotEmpty 
-                    ? Colors.green[300] 
+            color: showItem
+                ? Colors.green[400]
+                : candidateData.isNotEmpty
+                    ? Colors.green[300]
                     : Colors.green[200],
-            border: Border.all(color: Colors.white, width: 2),
-            borderRadius: BorderRadius.circular(4),
+            border: Border.all(
+              color: Colors.white,
+              width: 0.2,
+            ),
           ),
-          child: item != null 
-              ? Draggable<Item>(
-                  data: item,
-                  feedback: _buildItemWidget(item, Colors.green[600]!),
-                  childWhenDragging: _buildItemWidget(item, Colors.grey[600]!),
-                  child: _buildItemWidget(item, Colors.green[400]!),
+          child: showItem
+              ? GestureDetector(
+                  onPanStart: (details) {
+                    _startDragFromBoard(slotItem, index, details.localPosition);
+                  },
+                  onPanEnd: (details) {
+                    _endDrag();
+                  },
+                  child: Draggable<ItemModel>(
+                    data: slotItem,
+                    feedback: Material(
+                      color: Colors.transparent,
+                      child: _buildItemWidget(slotItem, Colors.green.shade600),
+                    ),
+                    childWhenDragging: _buildItemWidget(slotItem, Colors.grey.shade600),
+                    child: _buildItemWidget(slotItem, Colors.green.shade400),
+                  ),
                 )
               : Center(
                   child: Text(
@@ -435,13 +410,13 @@ class _ShopPhaseState extends State<ShopPhase> {
     );
   }
 
-  Widget _buildItemWidget(Item item, Color backgroundColor) {
+  Widget _buildItemWidget(ItemModel item, Color backgroundColor) {
     return Container(
-      width: 50,
+      width: (50 * item.slotsToOccupy).toDouble(),
       height: 70,
       decoration: BoxDecoration(
         color: backgroundColor,
-        border: Border.all(color: Colors.white, width: 2),
+        border: Border.all(color: Colors.white, width: 1),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Column(
