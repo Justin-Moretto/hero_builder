@@ -5,6 +5,7 @@ import 'models/player.dart';
 import 'phases/world_phase.dart';
 import 'widgets/character_sheet_overlay.dart';
 import 'widgets/game_top_bar.dart';
+import 'widgets/world_map_overlay.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,6 +40,7 @@ class _WorldScreenState extends State<WorldScreen> {
   late final WorldState worldState;
   late final Player player;
   CharacterPanelState _characterPanelState = CharacterPanelState.closed;
+  bool _worldMapVisible = false;
 
   @override
   void initState() {
@@ -58,6 +60,7 @@ class _WorldScreenState extends State<WorldScreen> {
             children: [
               GameTopBar(
                 player: player,
+                onMapPressed: () => setState(() => _worldMapVisible = true),
                 onCharacterPressed: () {
                   setState(() {
                     _characterPanelState = _characterPanelState == CharacterPanelState.maximized
@@ -74,6 +77,12 @@ class _WorldScreenState extends State<WorldScreen> {
             onPanelStateChanged: (state) => setState(() => _characterPanelState = state),
             player: player,
           ),
+          if (_worldMapVisible)
+            WorldMapOverlay(
+              state: worldState,
+              biomes: worldState.biomes,
+              onClose: () => setState(() => _worldMapVisible = false),
+            ),
         ],
       ),
     );

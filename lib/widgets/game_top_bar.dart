@@ -5,11 +5,13 @@ import '../models/player.dart';
 class GameTopBar extends StatelessWidget {
   final Player player;
   final VoidCallback onCharacterPressed;
+  final VoidCallback? onMapPressed;
 
   const GameTopBar({
     super.key,
     required this.player,
     required this.onCharacterPressed,
+    this.onMapPressed,
   });
 
   @override
@@ -43,6 +45,30 @@ class GameTopBar extends StatelessWidget {
                 backgroundColor: Colors.amber.shade900,
               ),
             ),
+            if (onMapPressed != null) ...[
+              const SizedBox(width: 8),
+              Material(
+                color: Colors.green.shade800,
+                borderRadius: BorderRadius.circular(8),
+                child: InkWell(
+                  onTap: onMapPressed,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.all(10),
+                    child: Center(
+                      child: Text(
+                        '\uD83D\uDDFA', // world map icon
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          height: 1,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(width: 8),
             Material(
               color: Colors.blue.shade800,

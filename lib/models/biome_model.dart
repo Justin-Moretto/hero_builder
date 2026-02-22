@@ -3,12 +3,20 @@ class BiomeModel {
   final String name;
   final int eventSlotCapacity;
   final List<String> assignedEventNodeKeys;
+  /// Biome keys this node connects to on the world map (adjacent travel only).
+  final List<String> connectedBiomeKeys;
+  /// Map position for layout (0.0..1.0); used by world map widget.
+  final double mapX;
+  final double mapY;
 
   const BiomeModel({
     required this.key,
     required this.name,
     required this.eventSlotCapacity,
     this.assignedEventNodeKeys = const [],
+    this.connectedBiomeKeys = const [],
+    this.mapX = 0.5,
+    this.mapY = 0.5,
   }) : assert(eventSlotCapacity >= 0, 'Biome cannot have a negative slot capacity.');
 
   /// Whether the biome has room to place another event node.
@@ -22,14 +30,23 @@ class BiomeModel {
     String? name,
     int? eventSlotCapacity,
     List<String>? assignedEventNodeKeys,
+    List<String>? connectedBiomeKeys,
+    double? mapX,
+    double? mapY,
   }) {
     return BiomeModel(
       key: key,
       name: name ?? this.name,
       eventSlotCapacity: eventSlotCapacity ?? this.eventSlotCapacity,
       assignedEventNodeKeys: assignedEventNodeKeys ?? this.assignedEventNodeKeys,
+      connectedBiomeKeys: connectedBiomeKeys ?? this.connectedBiomeKeys,
+      mapX: mapX ?? this.mapX,
+      mapY: mapY ?? this.mapY,
     );
   }
+
+  /// Whether the player can travel directly to [biomeKey] from this biome.
+  bool isAdjacent(String biomeKey) => connectedBiomeKeys.contains(biomeKey);
 
   /// Return a biome instance with an additional event node assigned.
   BiomeModel addEventNode(String eventNodeKey) {

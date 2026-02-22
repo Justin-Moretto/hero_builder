@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../game/world_state.dart';
-import '../models/biome_model.dart';
 import '../models/event_node_model.dart';
 
 class WorldPhase extends StatelessWidget {
@@ -16,7 +15,6 @@ class WorldPhase extends StatelessWidget {
       builder: (context, _currentBiomeKey, _) {
         final currentBiome = state.getCurrentBiome();
         final eventNodes = state.getCurrentEventNodeOptions();
-        final travelOptions = state.getTravelOptions();
 
         return Scaffold(
           backgroundColor: Colors.transparent,
@@ -45,7 +43,7 @@ class WorldPhase extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  // Two event node buttons (no functionality yet)
+                  // Event node buttons (no functionality yet)
                   Expanded(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -58,27 +56,6 @@ class WorldPhase extends StatelessWidget {
                           ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Travel to another biome
-                  const Text(
-                    'Travel to',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      for (final biome in travelOptions)
-                        _TravelButton(
-                          biome: biome,
-                          onTap: () => state.travelToBiome(biome.key),
-                        ),
-                    ],
                   ),
                 ],
               ),
@@ -125,32 +102,3 @@ class _EventNodeButton extends StatelessWidget {
   }
 }
 
-class _TravelButton extends StatelessWidget {
-  final BiomeModel biome;
-  final VoidCallback onTap;
-
-  const _TravelButton({required this.biome, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.green.shade800,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          child: Text(
-            biome.name,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}

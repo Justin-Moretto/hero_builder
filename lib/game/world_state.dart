@@ -49,11 +49,13 @@ class WorldState implements WorldStateInterface {
     return eligible.take(2).toList();
   }
 
+  /// Biomes the player can travel to (adjacent nodes only).
   List<BiomeModel> getTravelOptions() {
-    final other = biomes.where((b) => b.key != currentBiomeKey).toList();
-    if (other.length <= 2) return other;
-    other.shuffle(_random);
-    return other.take(2).toList();
+    final current = getCurrentBiome();
+    if (current == null) return [];
+    return biomes
+        .where((b) => b.key != currentBiomeKey && current.isAdjacent(b.key))
+        .toList(growable: false);
   }
 
   void travelToBiome(String biomeKey) {
