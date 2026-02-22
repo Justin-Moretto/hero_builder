@@ -56,13 +56,10 @@ class GameTopBar extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.all(10),
                     child: Center(
-                      child: Text(
-                        '\uD83D\uDDFA', // world map icon
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          height: 1,
-                        ),
+                      child: Icon(
+                        Icons.map,
+                        color: Colors.white,
+                        size: 22,
                       ),
                     ),
                   ),
@@ -79,13 +76,10 @@ class GameTopBar extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.all(10),
                   child: Center(
-                    child: Text(
-                      '\u2699', // gear symbol (Unicode), always visible
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        height: 1,
-                      ),
+                    child: Icon(
+                      Icons.settings,
+                      color: Colors.white,
+                      size: 22,
                     ),
                   ),
                 ),
