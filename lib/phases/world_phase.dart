@@ -5,8 +5,9 @@ import '../models/event_node_model.dart';
 
 class WorldPhase extends StatelessWidget {
   final WorldStateInterface state;
+  final VoidCallback? onEventTapped;
 
-  const WorldPhase({super.key, required this.state});
+  const WorldPhase({super.key, required this.state, this.onEventTapped});
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +49,11 @@ class WorldPhase extends StatelessWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        for (final node in eventNodes) _EventNodeButton(node: node),
+                        for (final node in eventNodes)
+                          _EventNodeButton(
+                            node: node,
+                            onTap: onEventTapped,
+                          ),
                         if (eventNodes.length < 2)
                           ...List.generate(
                             2 - eventNodes.length,
@@ -69,8 +74,9 @@ class WorldPhase extends StatelessWidget {
 
 class _EventNodeButton extends StatelessWidget {
   final EventNodeModel node;
+  final VoidCallback? onTap;
 
-  const _EventNodeButton({required this.node});
+  const _EventNodeButton({required this.node, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -78,9 +84,7 @@ class _EventNodeButton extends StatelessWidget {
       color: Colors.amber.shade800,
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
-        onTap: () {
-          // No functionality yet
-        },
+        onTap: onTap,
         borderRadius: BorderRadius.circular(8),
         child: SizedBox(
           width: 120,
