@@ -2,16 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../models/player.dart';
 
+/// Top bar showing HP and Energy only. Navigation is in [GameBottomBar].
 class GameTopBar extends StatelessWidget {
   final Player player;
-  final VoidCallback onCharacterPressed;
-  final VoidCallback? onMapPressed;
 
   const GameTopBar({
     super.key,
     required this.player,
-    required this.onCharacterPressed,
-    this.onMapPressed,
   });
 
   @override
@@ -43,46 +40,6 @@ class GameTopBar extends StatelessWidget {
                 max: player.maxEnergy,
                 color: Colors.amber,
                 backgroundColor: Colors.amber.shade900,
-              ),
-            ),
-            if (onMapPressed != null) ...[
-              const SizedBox(width: 8),
-              Material(
-                color: Colors.green.shade800,
-                borderRadius: BorderRadius.circular(8),
-                child: InkWell(
-                  onTap: onMapPressed,
-                  borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                    padding: const EdgeInsets.all(10),
-                    child: Center(
-                      child: Icon(
-                        Icons.map,
-                        color: Colors.white,
-                        size: 22,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-            const SizedBox(width: 8),
-            Material(
-              color: Colors.blue.shade800,
-              borderRadius: BorderRadius.circular(8),
-              child: InkWell(
-                onTap: onCharacterPressed,
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Center(
-                    child: Icon(
-                      Icons.settings,
-                      color: Colors.white,
-                      size: 22,
-                    ),
-                  ),
-                ),
               ),
             ),
           ],

@@ -11,25 +11,26 @@ const double _mapHeight = 1200;
 const List<double> _zoomScales = [0.5, 0.75, 1.0, 1.25, 1.5];
 const int _defaultZoomLevel = 2;
 
-/// Full-screen overlay showing the world map as a pannable canvas of biome nodes.
-/// Opens centered on the current node; only adjacent nodes are tappable.
-class WorldMapOverlay extends StatefulWidget {
+/// Inline world map view: pannable canvas of biome nodes.
+/// Use in the main content area; bottom bar handles navigation.
+/// [onTravel] is called when the user travels to a biome (e.g. to switch back to main view).
+class WorldMapView extends StatefulWidget {
   final WorldStateInterface state;
   final List<BiomeModel> biomes;
-  final VoidCallback onClose;
+  final VoidCallback? onTravel;
 
-  const WorldMapOverlay({
+  const WorldMapView({
     super.key,
     required this.state,
     required this.biomes,
-    required this.onClose,
+    this.onTravel,
   });
 
   @override
-  State<WorldMapOverlay> createState() => _WorldMapOverlayState();
+  State<WorldMapView> createState() => _WorldMapViewState();
 }
 
-class _WorldMapOverlayState extends State<WorldMapOverlay> {
+class _WorldMapViewState extends State<WorldMapView> {
   final TransformationController _transformationController =
       TransformationController();
   bool _initialCenterSet = false;
@@ -75,116 +76,107 @@ class _WorldMapOverlayState extends State<WorldMapOverlay> {
   Widget build(BuildContext context) {
     return Material(
       color: Colors.black,
-      child: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'World Map',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  TextButton.icon(
-                    onPressed: widget.onClose,
-                    icon: const Icon(Icons.close, color: Colors.white, size: 20),
-                    label: const Text('Close', style: TextStyle(color: Colors.white)),
-                  ),
-                ],
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'World Map',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-            Expanded(
-              child: Stack(
-                children: [
-                  ValueListenableBuilder<String>(
-                    valueListenable: widget.state.currentBiomeKeyNotifier,
-                    builder: (context, currentKey, _) {
-                      return LayoutBuilder(
-                        builder: (context, constraints) {
-                          final viewportW = constraints.maxWidth;
-                          final viewportH = constraints.maxHeight;
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (mounted &&
-                                (_viewportW != viewportW || _viewportH != viewportH)) {
-                              setState(() {
-                                _viewportW = viewportW;
-                                _viewportH = viewportH;
-                              });
-                            }
-                          });
-                          if (!_initialCenterSet &&
-                              viewportW > 0 &&
-                              viewportH > 0) {
-                            final current = widget.state.getCurrentBiome();
-                            if (current != null) {
-                              final nodeX = current.mapX * _mapWidth;
-                              final nodeY = current.mapY * _mapHeight;
-                              final s = _zoomScales[_zoomLevel];
-                              final tx = (viewportW / 2 - nodeX * s).clamp(
-                                viewportW - _mapWidth * s,
-                                0.0,
-                              );
-                              final ty = (viewportH / 2 - nodeY * s).clamp(
-                                viewportH - _mapHeight * s,
-                                0.0,
-                              );
-                              _transformationController.value = Matrix4.identity()
-                                ..translate(tx, ty)
-                                ..scale(s);
-                              _initialCenterSet = true;
-                            }
+          ),
+          Expanded(
+            child: Stack(
+              children: [
+                ValueListenableBuilder<String>(
+                  valueListenable: widget.state.currentBiomeKeyNotifier,
+                  builder: (context, currentKey, _) {
+                    return LayoutBuilder(
+                      builder: (context, constraints) {
+                        final viewportW = constraints.maxWidth;
+                        final viewportH = constraints.maxHeight;
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted &&
+                              (_viewportW != viewportW || _viewportH != viewportH)) {
+                            setState(() {
+                              _viewportW = viewportW;
+                              _viewportH = viewportH;
+                            });
                           }
-                          return InteractiveViewer(
-                            constrained: false,
-                            transformationController: _transformationController,
-                            minScale: 0.25,
-                            maxScale: 2.0,
-                            child: _WorldMapContent(
-                              state: widget.state,
-                              biomes: widget.biomes,
-                              currentBiomeKey: currentKey,
-                              mapWidth: _mapWidth,
-                              mapHeight: _mapHeight,
-                              onTravel: widget.onClose,
-                            ),
-                          );
-                        },
-                      );
-                    },
+                        });
+                        if (!_initialCenterSet &&
+                            viewportW > 0 &&
+                            viewportH > 0) {
+                          final current = widget.state.getCurrentBiome();
+                          if (current != null) {
+                            final nodeX = current.mapX * _mapWidth;
+                            final nodeY = current.mapY * _mapHeight;
+                            final s = _zoomScales[_zoomLevel];
+                            final tx = (viewportW / 2 - nodeX * s).clamp(
+                              viewportW - _mapWidth * s,
+                              0.0,
+                            );
+                            final ty = (viewportH / 2 - nodeY * s).clamp(
+                              viewportH - _mapHeight * s,
+                              0.0,
+                            );
+                            _transformationController.value = Matrix4.identity()
+                              ..translate(tx, ty)
+                              ..scale(s);
+                            _initialCenterSet = true;
+                          }
+                        }
+                        return InteractiveViewer(
+                          constrained: false,
+                          transformationController: _transformationController,
+                          minScale: 0.25,
+                          maxScale: 2.0,
+                          child: _WorldMapContent(
+                            state: widget.state,
+                            biomes: widget.biomes,
+                            currentBiomeKey: currentKey,
+                            mapWidth: _mapWidth,
+                            mapHeight: _mapHeight,
+                            onTravel: widget.onTravel,
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+                Positioned(
+                  right: 16,
+                  bottom: 16,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      FloatingActionButton.small(
+                        heroTag: 'map_zoom_in',
+                        onPressed: _zoomLevel < _zoomScales.length - 1
+                            ? _zoomIn
+                            : null,
+                        child: const Icon(Icons.add),
+                      ),
+                      const SizedBox(height: 8),
+                      FloatingActionButton.small(
+                        heroTag: 'map_zoom_out',
+                        onPressed: _zoomLevel > 0 ? _zoomOut : null,
+                        child: const Icon(Icons.remove),
+                      ),
+                    ],
                   ),
-                  Positioned(
-                    right: 16,
-                    bottom: 16,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        FloatingActionButton.small(
-                          heroTag: 'map_zoom_in',
-                          onPressed: _zoomLevel < _zoomScales.length - 1
-                              ? _zoomIn
-                              : null,
-                          child: const Icon(Icons.add),
-                        ),
-                        const SizedBox(height: 8),
-                        FloatingActionButton.small(
-                          heroTag: 'map_zoom_out',
-                          onPressed: _zoomLevel > 0 ? _zoomOut : null,
-                          child: const Icon(Icons.remove),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -196,7 +188,7 @@ class _WorldMapContent extends StatelessWidget {
   final String currentBiomeKey;
   final double mapWidth;
   final double mapHeight;
-  final VoidCallback onTravel;
+  final VoidCallback? onTravel;
 
   const _WorldMapContent({
     required this.state,
@@ -204,7 +196,7 @@ class _WorldMapContent extends StatelessWidget {
     required this.currentBiomeKey,
     required this.mapWidth,
     required this.mapHeight,
-    required this.onTravel,
+    this.onTravel,
   });
 
   static const double _nodeRadius = 36;
@@ -265,7 +257,7 @@ class _WorldMapContent extends StatelessWidget {
             onPressed: () {
               Navigator.of(dialogContext).pop();
               state.travelToBiome(biome.key);
-              onTravel();
+              onTravel?.call();
             },
             child: const Text('Travel'),
           ),

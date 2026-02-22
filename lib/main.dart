@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'game/world_state.dart';
 import 'models/player.dart';
 import 'phases/world_phase.dart';
-import 'widgets/character_sheet_overlay.dart';
+import 'widgets/character_view.dart';
+import 'widgets/game_bottom_bar.dart';
 import 'widgets/game_top_bar.dart';
 import 'widgets/world_map_overlay.dart';
 
@@ -28,7 +29,9 @@ class HeroBuilderApp extends StatelessWidget {
   }
 }
 
-/// Initial screen: world map with biome + event nodes + travel. No Flame, loads immediately.
+enum AppView { main, map, character }
+
+/// Main screen: top bar, content area (biome / map / character), bottom bar always visible.
 class WorldScreen extends StatefulWidget {
   const WorldScreen({super.key});
 
@@ -39,8 +42,7 @@ class WorldScreen extends StatefulWidget {
 class _WorldScreenState extends State<WorldScreen> {
   late final WorldState worldState;
   late final Player player;
-  CharacterPanelState _characterPanelState = CharacterPanelState.closed;
-  bool _worldMapVisible = false;
+  AppView _currentView = AppView.main;
 
   @override
   void initState() {
@@ -53,38 +55,45 @@ class _WorldScreenState extends State<WorldScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[900],
-      body: Stack(
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              GameTopBar(
-                player: player,
-                onMapPressed: () => setState(() => _worldMapVisible = true),
-                onCharacterPressed: () {
-                  setState(() {
-                    _characterPanelState = _characterPanelState == CharacterPanelState.maximized
-                        ? CharacterPanelState.closed
-                        : CharacterPanelState.maximized;
-                  });
-                },
-              ),
-              Expanded(child: WorldPhase(state: worldState)),
-            ],
-          ),
-          CharacterSheetOverlay(
-            panelState: _characterPanelState,
-            onPanelStateChanged: (state) => setState(() => _characterPanelState = state),
-            player: player,
-          ),
-          if (_worldMapVisible)
-            WorldMapOverlay(
-              state: worldState,
-              biomes: worldState.biomes,
-              onClose: () => setState(() => _worldMapVisible = false),
+          GameTopBar(player: player),
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: _buildContent(),
             ),
+          ),
+          GameBottomBar(
+            onMapPressed: () => setState(() => _currentView = AppView.map),
+            onCharacterPressed: () => setState(() => _currentView = AppView.character),
+            onCurrentBiomePressed: () => setState(() => _currentView = AppView.main),
+          ),
         ],
       ),
     );
+  }
+
+  Widget _buildContent() {
+    switch (_currentView) {
+      case AppView.main:
+        return WorldPhase(
+          key: const ValueKey('main'),
+          state: worldState,
+        );
+      case AppView.map:
+        return WorldMapView(
+          key: const ValueKey('map'),
+          state: worldState,
+          biomes: worldState.biomes,
+          onTravel: () => setState(() => _currentView = AppView.main),
+        );
+      case AppView.character:
+        return CharacterView(
+          key: const ValueKey('character'),
+          player: player,
+        );
+    }
   }
 }
