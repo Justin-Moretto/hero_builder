@@ -77,6 +77,14 @@ class _CharacterViewState extends State<CharacterView> {
                       });
                     },
                   ),
+                  if (_selectedSlotIndex != null) ...[
+                    const SizedBox(height: 8),
+                    _EquipButton(
+                      player: widget.player,
+                      itemKey: widget.player.board[_selectedSlotIndex!],
+                      onToggled: () => setState(() {}),
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   _ItemInfoPanel(
                     item: _selectedSlotIndex != null
@@ -119,6 +127,8 @@ class _InventoryGrid extends StatelessWidget {
           children: List.generate(Player.boardSize, (index) {
             final item = player.shouldRenderItemAtSlot(index) ? player.getItemAtSlot(index) : null;
             final isSelected = selectedSlotIndex == index;
+            final itemKey = item?.key;
+            final isEquipped = itemKey != null && player.isEquipped(itemKey);
             return SizedBox(
               width: width,
               height: width,
@@ -129,6 +139,7 @@ class _InventoryGrid extends StatelessWidget {
                 child: _SquircleTile(
                   item: item,
                   isSelected: isSelected,
+                  isEquipped: isEquipped,
                 ),
               ),
             );
@@ -142,19 +153,25 @@ class _InventoryGrid extends StatelessWidget {
 class _SquircleTile extends StatelessWidget {
   final ItemModel? item;
   final bool isSelected;
+  final bool isEquipped;
 
-  const _SquircleTile({this.item, this.isSelected = false});
+  const _SquircleTile({this.item, this.isSelected = false, this.isEquipped = false});
 
   @override
   Widget build(BuildContext context) {
     final isWeapon = item != null && item!.damage > 0;
+    final borderColor = isSelected
+        ? Colors.amber
+        : isEquipped
+            ? Colors.green
+            : Colors.grey[700]!;
 
     return Container(
       decoration: BoxDecoration(
         color: item != null ? Colors.grey[800] : Colors.grey[850],
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isSelected ? Colors.amber : Colors.grey[700]!,
+          color: borderColor,
           width: isSelected ? 3 : 1,
         ),
       ),
@@ -187,6 +204,11 @@ class _SquircleTile extends StatelessWidget {
                         style: TextStyle(color: Colors.grey[400], fontSize: 12),
                       ),
                     ],
+                    if (isEquipped)
+                      Text(
+                        'Equipped',
+                        style: TextStyle(color: Colors.green[300], fontSize: 10),
+                      ),
                   ],
                 ),
         ),
@@ -196,6 +218,38 @@ class _SquircleTile extends StatelessWidget {
 }
 
 /// Panel below the inventory showing the selected item's details.
+class _EquipButton extends StatelessWidget {
+  final Player player;
+  final String? itemKey;
+  final VoidCallback onToggled;
+
+  const _EquipButton({
+    required this.player,
+    required this.itemKey,
+    required this.onToggled,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (itemKey == null) return const SizedBox.shrink();
+    final item = player.getItemByKey(itemKey!);
+    if (item == null || item.damage <= 0) return const SizedBox.shrink();
+    final equipped = player.isEquipped(itemKey!);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: TextButton.icon(
+        onPressed: () {
+          player.setEquipped(itemKey!, !equipped);
+          onToggled();
+        },
+        icon: Icon(equipped ? Icons.check_circle : Icons.add_circle_outline, size: 18, color: Colors.white70),
+        label: Text(equipped ? 'Unequip' : 'Equip'),
+        style: TextButton.styleFrom(foregroundColor: Colors.white70),
+      ),
+    );
+  }
+}
+
 class _ItemInfoPanel extends StatelessWidget {
   final ItemModel? item;
 

@@ -15,6 +15,8 @@ abstract class WorldStateInterface {
   List<EventNodeModel> getCurrentEventNodeOptions();
   List<BiomeModel> getTravelOptions();
   void travelToBiome(String biomeKey);
+  void clearEncounter(String eventNodeKey);
+  bool isEncounterCleared(String eventNodeKey);
 }
 
 /// World map state: current biome, event nodes, and travel options.
@@ -23,6 +25,8 @@ class WorldState implements WorldStateInterface {
   final List<BiomeModel> biomes = createDefaultBiomes();
   final List<EventNodeModel> eventNodes = createDefaultEventNodes();
   final Random _random = Random();
+  /// Cleared combat encounter node keys per biome (so the node disappears after victory).
+  final Map<String, Set<String>> _clearedEncountersByBiome = {};
 
   final ValueNotifier<String> currentBiomeKeyNotifier = ValueNotifier('');
 
@@ -41,12 +45,27 @@ class WorldState implements WorldStateInterface {
   }
 
   List<EventNodeModel> getCurrentEventNodeOptions() {
+    final cleared = _clearedEncountersByBiome[currentBiomeKey];
     final eligible = eventNodes
-        .where((n) => n.canSpawnInBiome(currentBiomeKey))
+        .where((n) =>
+            n.canSpawnInBiome(currentBiomeKey) &&
+            (cleared == null || !cleared.contains(n.key)))
         .toList(growable: false);
     if (eligible.length <= 2) return List.from(eligible);
     eligible.shuffle(_random);
     return eligible.take(2).toList();
+  }
+
+  @override
+  void clearEncounter(String eventNodeKey) {
+    _clearedEncountersByBiome
+        .putIfAbsent(currentBiomeKey, () => {})
+        .add(eventNodeKey);
+  }
+
+  @override
+  bool isEncounterCleared(String eventNodeKey) {
+    return _clearedEncountersByBiome[currentBiomeKey]?.contains(eventNodeKey) ?? false;
   }
 
   /// Biomes the player can travel to (adjacent nodes only).

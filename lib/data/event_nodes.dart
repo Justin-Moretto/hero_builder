@@ -69,4 +69,29 @@ List<EventNodeModel> createDefaultEventNodes() => [
     description: 'Store gold and secure loans.',
     biomeOptions: ['city', 'castle'],
   ),
+  // Combat encounters (red nodes)
+  EventNodeModel(
+    key: 'encounter_slime',
+    name: 'Slime',
+    description: 'A sticky foe.',
+    biomeOptions: ['forest', 'cave'],
+    isCombatEncounter: true,
+    enemyKey: 'slime',
+  ),
+  EventNodeModel(
+    key: 'encounter_skeleton',
+    name: 'Skeleton',
+    description: 'Bones and blade.',
+    biomeOptions: ['cave', 'forest'],
+    isCombatEncounter: true,
+    enemyKey: 'skeleton',
+  ),
+  EventNodeModel(
+    key: 'encounter_bandit',
+    name: 'Bandit',
+    description: 'Highway robbery.',
+    biomeOptions: ['forest', 'village_1'],
+    isCombatEncounter: true,
+    enemyKey: 'bandit',
+  ),
 ];

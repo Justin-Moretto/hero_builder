@@ -5,12 +5,17 @@ class EventNodeModel {
   final String name;
   final String? description;
   final List<String> biomeOptions;
+  /// Combat encounter: node is red and opens combat screen. [enemyKey] identifies the enemy.
+  final bool isCombatEncounter;
+  final String? enemyKey;
 
   const EventNodeModel({
     required this.key,
     required this.name,
     this.description,
     required this.biomeOptions,
+    this.isCombatEncounter = false,
+    this.enemyKey,
   }) : assert(
           biomeOptions.length > 0,
           'Event node must provide at least one biome option.',
@@ -40,12 +45,16 @@ class EventNodeModel {
     String? name,
     String? description,
     List<String>? biomeOptions,
+    bool? isCombatEncounter,
+    String? enemyKey,
   }) {
     return EventNodeModel(
       key: key,
       name: name ?? this.name,
       description: description ?? this.description,
       biomeOptions: biomeOptions ?? this.biomeOptions,
+      isCombatEncounter: isCombatEncounter ?? this.isCombatEncounter,
+      enemyKey: enemyKey ?? this.enemyKey,
     );
   }
 }

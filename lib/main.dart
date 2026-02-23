@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'data/shop_items.dart';
 import 'game/world_state.dart';
+import 'models/event_node_model.dart';
 import 'models/item_model.dart';
 import 'models/player.dart';
+import 'phases/combat_screen.dart';
 import 'phases/shop_screen.dart';
 import 'phases/world_phase.dart';
 import 'widgets/character_view.dart';
@@ -58,6 +60,8 @@ class _WorldScreenState extends State<WorldScreen> {
   late final Player player;
   AppView _currentView = AppView.main;
   bool _showShop = false;
+  bool _showCombat = false;
+  EventNodeModel? _combatNode;
   List<ItemModel> _currentShopItems = getRandomShopItems();
 
   @override
@@ -69,6 +73,7 @@ class _WorldScreenState extends State<WorldScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final showBottomBar = !_showCombat;
     return Scaffold(
       backgroundColor: Colors.grey[900],
       body: Column(
@@ -81,11 +86,12 @@ class _WorldScreenState extends State<WorldScreen> {
               child: _buildContent(),
             ),
           ),
-          GameBottomBar(
-            onMapPressed: () => setState(() => _currentView = AppView.map),
-            onCharacterPressed: () => setState(() => _currentView = AppView.character),
-            onCurrentBiomePressed: () => setState(() => _currentView = AppView.main),
-          ),
+          if (showBottomBar)
+            GameBottomBar(
+              onMapPressed: () => setState(() => _currentView = AppView.map),
+              onCharacterPressed: () => setState(() => _currentView = AppView.character),
+              onCurrentBiomePressed: () => setState(() => _currentView = AppView.main),
+            ),
         ],
       ),
     );
@@ -94,6 +100,24 @@ class _WorldScreenState extends State<WorldScreen> {
   Widget _buildContent() {
     switch (_currentView) {
       case AppView.main:
+        if (_showCombat && _combatNode != null) {
+          return CombatScreen(
+            key: const ValueKey('combat'),
+            player: player,
+            eventNode: _combatNode!,
+            worldState: worldState,
+            onVictory: () => setState(() {
+              worldState.clearEncounter(_combatNode!.key);
+              _showCombat = false;
+              _combatNode = null;
+            }),
+            onDefeat: () => setState(() {
+              _showCombat = false;
+              _combatNode = null;
+              // Stay on main view; defeat dialog offers New run / Quit
+            }),
+          );
+        }
         if (_showShop) {
           return ShopScreen(
             key: const ValueKey('shop'),
@@ -106,9 +130,17 @@ class _WorldScreenState extends State<WorldScreen> {
         return WorldPhase(
           key: const ValueKey('main'),
           state: worldState,
-          onEventTapped: () => setState(() {
-            _currentShopItems = getRandomShopItems();
-            _showShop = true;
+          onEventTapped: (node) => setState(() {
+            if (node.isCombatEncounter) {
+              _combatNode = node;
+              _showCombat = true;
+              _showShop = false;
+            } else {
+              _currentShopItems = getRandomShopItems();
+              _showShop = true;
+              _showCombat = false;
+              _combatNode = null;
+            }
           }),
         );
       case AppView.map:

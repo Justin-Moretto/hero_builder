@@ -14,6 +14,9 @@ class Player {
 
   final Map<String, ItemModel> items = {};
 
+  /// Keys of items currently equipped (used in combat). Only these items deal damage.
+  final Set<String> equippedItemKeys = {};
+
   bool hasInventorySpace(int itemSize) {
     int free = board.where((key) => key == null).length;
     return free >= itemSize;
@@ -42,6 +45,7 @@ class Player {
       if (board[i] == itemKey) board[i] = null;
     }
     items.remove(itemKey);
+    equippedItemKeys.remove(itemKey);
   }
 
   void placeItemAtSlot(ItemModel item, int startIndex) {
@@ -156,5 +160,27 @@ class Player {
       if (board[i] == itemKey) return i;
     }
     return null;
+  }
+
+  bool isEquipped(String itemKey) => equippedItemKeys.contains(itemKey);
+
+  void setEquipped(String itemKey, bool equipped) {
+    if (equipped) {
+      equippedItemKeys.add(itemKey);
+    } else {
+      equippedItemKeys.remove(itemKey);
+    }
+  }
+
+  /// Items that are equipped (have damage and cooldown for combat). Order matches board order.
+  List<ItemModel> getEquippedItems() {
+    final list = <ItemModel>[];
+    for (final key in board) {
+      if (key != null && equippedItemKeys.contains(key)) {
+        final item = items[key];
+        if (item != null && item.damage > 0) list.add(item);
+      }
+    }
+    return list;
   }
 }

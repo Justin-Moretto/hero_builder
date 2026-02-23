@@ -21,6 +21,7 @@ class HeroGame extends FlameGame implements WorldStateInterface {
   late List<BiomeModel> biomes;
   late List<EventNodeModel> eventNodes;
   final Random _random = Random();
+  final Map<String, Set<String>> _clearedEncountersByBiome = {};
 
   /// Current biome key; changes when the player travels. Listen to this to rebuild world UI.
   final ValueNotifier<String> currentBiomeKeyNotifier = ValueNotifier('');
@@ -49,12 +50,27 @@ class HeroGame extends FlameGame implements WorldStateInterface {
 
   /// Two random event nodes that can appear in the current biome. New draw each time (e.g. after travel).
   List<EventNodeModel> getCurrentEventNodeOptions() {
+    final cleared = _clearedEncountersByBiome[currentBiomeKey];
     final eligible = eventNodes
-        .where((n) => n.canSpawnInBiome(currentBiomeKey))
+        .where((n) =>
+            n.canSpawnInBiome(currentBiomeKey) &&
+            (cleared == null || !cleared.contains(n.key)))
         .toList(growable: false);
     if (eligible.length <= 2) return List.from(eligible);
     eligible.shuffle(_random);
     return eligible.take(2).toList();
+  }
+
+  @override
+  void clearEncounter(String eventNodeKey) {
+    _clearedEncountersByBiome
+        .putIfAbsent(currentBiomeKey, () => {})
+        .add(eventNodeKey);
+  }
+
+  @override
+  bool isEncounterCleared(String eventNodeKey) {
+    return _clearedEncountersByBiome[currentBiomeKey]?.contains(eventNodeKey) ?? false;
   }
 
   /// Biomes the player can travel to (adjacent nodes only).

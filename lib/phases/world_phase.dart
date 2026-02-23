@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import '../game/world_state.dart';
 import '../models/event_node_model.dart';
 
+/// Called when user taps an event node. [node] identifies which node was tapped.
+typedef OnEventNodeTapped = void Function(EventNodeModel node);
+
 class WorldPhase extends StatelessWidget {
   final WorldStateInterface state;
-  final VoidCallback? onEventTapped;
+  final OnEventNodeTapped? onEventTapped;
 
   const WorldPhase({super.key, required this.state, this.onEventTapped});
 
@@ -52,7 +55,7 @@ class WorldPhase extends StatelessWidget {
                         for (final node in eventNodes)
                           _EventNodeButton(
                             node: node,
-                            onTap: onEventTapped,
+                            onTap: onEventTapped != null ? () => onEventTapped!(node) : null,
                           ),
                         if (eventNodes.length < 2)
                           ...List.generate(
@@ -80,8 +83,10 @@ class _EventNodeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isCombat = node.isCombatEncounter;
+    final color = isCombat ? Colors.red.shade700 : Colors.amber.shade800;
     return Material(
-      color: Colors.amber.shade800,
+      color: color,
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
         onTap: onTap,
