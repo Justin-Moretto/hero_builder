@@ -343,8 +343,7 @@ class _ShopPhaseState extends State<ShopPhase> {
         // If this is the same item being dragged from the board
         if (_draggedItemIndex != null && data == _draggedItem) {
           // Check if we're dropping to the same position or an adjacent empty space
-          if (index == _draggedItemIndex || 
-              (index >= _draggedItemIndex! - 1 && index <= _draggedItemIndex! + data.slotsToOccupy)) {
+          if (index == _draggedItemIndex) {
             // Just place it back in the original position without calling _handleDropOnBoard
             widget.player.placeItem(data, _draggedItemIndex!, ignoreItemKey: data.key);
             return;
@@ -363,7 +362,7 @@ class _ShopPhaseState extends State<ShopPhase> {
         final ItemModel? slotItem = item;
         final bool showItem = shouldShowItem && slotItem != null;
         return Container(
-          width: showItem && slotItem.slotsToOccupy > 1 ? (50 * slotItem.slotsToOccupy).toDouble() : 50,
+          width: 50,
           height: 70,
           margin: EdgeInsets.zero,
           transform: shouldHighlight ? Matrix4.translationValues(0, -5, 0) : null,
@@ -412,7 +411,7 @@ class _ShopPhaseState extends State<ShopPhase> {
 
   Widget _buildItemWidget(ItemModel item, Color backgroundColor) {
     return Container(
-      width: (50 * item.slotsToOccupy).toDouble(),
+      width: 50,
       height: 70,
       decoration: BoxDecoration(
         color: backgroundColor,

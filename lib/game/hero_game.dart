@@ -74,36 +74,15 @@ class HeroGame extends FlameGame implements WorldStateInterface {
   void _generateShopItems() {
     // TODO: Replace with random generation logic
     shopItems = [
-      ItemModel(
-        key: 'dagger_1',
-        name: 'Dagger',
-        size: ItemSize.small,
-        damage: 2,
-      ),
-      ItemModel(
-        key: 'short_sword_1',
-        name: 'Short Sword',
-        size: ItemSize.small,
-        damage: 3,
-      ),
-      ItemModel(
-        key: 'wand_1',
-        name: 'Wand',
-        size: ItemSize.small,
-        damage: 1,
-      ),
-      ItemModel(
-        key: 'platemail_1',
-        name: 'Platemail',
-        size: ItemSize.medium,
-        damage: 4,
-      ),
+      const ItemModel(key: 'dagger_1', name: 'Dagger', damage: 2),
+      const ItemModel(key: 'short_sword_1', name: 'Short Sword', damage: 3),
+      const ItemModel(key: 'wand_1', name: 'Wand', damage: 1),
+      const ItemModel(key: 'platemail_1', name: 'Platemail', damage: 4),
     ];
   }
 
   void buyItem(ItemModel item) {
-    if (player.gold >= item.cost &&
-        player.hasInventorySpace(item.slotsToOccupy)) {
+    if (player.gold >= item.cost && player.hasInventorySpace(1)) {
       player.gold -= item.cost;
       player.addToBoard(item);
     }

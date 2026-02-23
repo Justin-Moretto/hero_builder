@@ -76,7 +76,7 @@ class _MinimizedBar extends StatelessWidget {
         children: [
           Text(
             '\u2699',
-            style: TextStyle(color: Colors.grey[400], fontSize: 22, height: 1),
+            style: TextStyle(color: Colors.grey[400], fontSize: 25, height: 1),
           ),
           const SizedBox(width: 8),
           const Text(
@@ -84,7 +84,7 @@ class _MinimizedBar extends StatelessWidget {
             style: TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
-              fontSize: 16,
+              fontSize: 19,
             ),
           ),
           const Spacer(),
@@ -134,7 +134,7 @@ class _MaximizedContent extends StatelessWidget {
                   'Stats',
                   style: TextStyle(
                     color: Colors.grey[300],
-                    fontSize: 12,
+                    fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -147,7 +147,7 @@ class _MaximizedContent extends StatelessWidget {
                   'Inventory',
                   style: TextStyle(
                     color: Colors.grey[300],
-                    fontSize: 12,
+                    fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -163,7 +163,7 @@ class _MaximizedContent extends StatelessWidget {
                       ? Center(
                           child: Text(
                             'Empty (inventory will be redone)',
-                            style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                            style: TextStyle(color: Colors.grey[500], fontSize: 16),
                           ),
                         )
                       : Wrap(
@@ -179,7 +179,7 @@ class _MaximizedContent extends StatelessWidget {
                                 ),
                                 child: Text(
                                   entry.value.name,
-                                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                                  style: const TextStyle(color: Colors.white, fontSize: 15),
                                 ),
                               ),
                           ],
@@ -214,7 +214,7 @@ class _HeaderBar extends StatelessWidget {
             style: TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
-              fontSize: 16,
+              fontSize: 19,
             ),
           ),
           const Spacer(),
@@ -258,7 +258,7 @@ class _TextIconButton extends StatelessWidget {
             label,
             style: const TextStyle(
               color: Colors.white70,
-              fontSize: 20,
+              fontSize: 23,
               height: 1,
             ),
           ),
@@ -281,8 +281,8 @@ class _StatRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: Colors.grey[400], fontSize: 14)),
-          Text(value, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
+          Text(label, style: TextStyle(color: Colors.grey[400], fontSize: 16)),
+          Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
         ],
       ),
     );

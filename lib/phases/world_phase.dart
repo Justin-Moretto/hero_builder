@@ -30,7 +30,7 @@ class WorldPhase extends StatelessWidget {
                     currentBiome?.name ?? 'Unknown',
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 24,
+                      fontSize: 27,
                       fontWeight: FontWeight.bold,
                     ),
                     textAlign: TextAlign.center,
@@ -40,7 +40,7 @@ class WorldPhase extends StatelessWidget {
                     'Event nodes here',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.8),
-                      fontSize: 12,
+                      fontSize: 15,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -94,7 +94,7 @@ class _EventNodeButton extends StatelessWidget {
               node.name,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 14,
+                fontSize: 17,
                 fontWeight: FontWeight.bold,
               ),
               textAlign: TextAlign.center,

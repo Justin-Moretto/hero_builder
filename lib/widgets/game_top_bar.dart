@@ -75,7 +75,7 @@ class _BarLabel extends StatelessWidget {
               label,
               style: TextStyle(
                 color: Colors.grey[300],
-                fontSize: 11,
+                fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
               overflow: TextOverflow.ellipsis,
@@ -97,7 +97,7 @@ class _BarLabel extends StatelessWidget {
               '$value/$max',
               style: TextStyle(
                 color: Colors.grey[300],
-                fontSize: 10,
+                fontSize: 13,
               ),
               overflow: TextOverflow.ellipsis,
             ),

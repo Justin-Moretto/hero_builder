@@ -5,7 +5,7 @@ class Player {
   int health = 30;
   int maxEnergy = 10;
   int energy = 10;
-  int gold = 5;
+  int gold = 80;
   static const int boardSize = 10;
   static const int stashSize = 10;
 
@@ -20,12 +20,11 @@ class Player {
   }
 
   void addToBoard(ItemModel item) {
-    int added = 0;
-    for (var i = 0; i < board.length && added < item.slotsToOccupy; i++) {
+    for (var i = 0; i < board.length; i++) {
       if (board[i] == null) {
         board[i] = item.key;
         items[item.key] = item;
-        added++;
+        return;
       }
     }
   }
@@ -46,10 +45,10 @@ class Player {
   }
 
   void placeItemAtSlot(ItemModel item, int startIndex) {
-    for (int i = 0; i < item.slotsToOccupy && startIndex + i < board.length; i++) {
-      board[startIndex + i] = item.key;
+    if (startIndex >= 0 && startIndex < board.length) {
+      board[startIndex] = item.key;
+      items[item.key] = item;
     }
-    items[item.key] = item;
   }
 
   void clearSlots(int startIndex, int count) {
@@ -127,7 +126,7 @@ class Player {
   }
 
   bool placeItem(ItemModel item, int targetIndex, {String? ignoreItemKey}) {
-    if (!bumpItemsToMakeSpace(targetIndex, item.slotsToOccupy, ignoreItemKey: ignoreItemKey)) return false;
+    if (!bumpItemsToMakeSpace(targetIndex, 1, ignoreItemKey: ignoreItemKey)) return false;
     placeItemAtSlot(item, targetIndex);
     return true;
   }
@@ -136,7 +135,7 @@ class Player {
 
   bool shouldHighlightSlot(int index, ItemModel? draggedItem, int? hoveredIndex, {String? ignoreItemKey}) {
     if (draggedItem == null || hoveredIndex == null) return false;
-    if (index >= hoveredIndex && index < hoveredIndex + draggedItem.slotsToOccupy) {
+    if (index == hoveredIndex) {
       final key = board[index];
       if (key != null && key != ignoreItemKey) return true;
     }

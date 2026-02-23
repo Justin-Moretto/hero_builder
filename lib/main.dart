@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'data/shop_items.dart';
 import 'game/world_state.dart';
 import 'models/item_model.dart';
 import 'models/player.dart';
@@ -9,14 +10,6 @@ import 'widgets/character_view.dart';
 import 'widgets/game_bottom_bar.dart';
 import 'widgets/game_top_bar.dart';
 import 'widgets/world_map_overlay.dart';
-
-/// Placeholder shop items for the biome event shop.
-List<ItemModel> get _placeholderShopItems => [
-  ItemModel(key: 'shop_dagger', name: 'Dagger', size: ItemSize.small, damage: 2, cost: 5),
-  ItemModel(key: 'shop_potion', name: 'Health Potion', size: ItemSize.small, damage: 0, cost: 3),
-  ItemModel(key: 'shop_sword', name: 'Short Sword', size: ItemSize.small, damage: 4, cost: 10),
-  ItemModel(key: 'shop_armor', name: 'Leather Armor', size: ItemSize.medium, damage: 0, cost: 12),
-];
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,6 +26,17 @@ class HeroBuilderApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
         brightness: Brightness.dark,
+        textTheme: const TextTheme(
+          bodyLarge: TextStyle(fontSize: 17),
+          bodyMedium: TextStyle(fontSize: 16),
+          bodySmall: TextStyle(fontSize: 14),
+          titleLarge: TextStyle(fontSize: 23, fontWeight: FontWeight.bold),
+          titleMedium: TextStyle(fontSize: 19, fontWeight: FontWeight.w600),
+          titleSmall: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          labelLarge: TextStyle(fontSize: 15),
+          labelMedium: TextStyle(fontSize: 14),
+          labelSmall: TextStyle(fontSize: 12),
+        ),
       ),
       home: const WorldScreen(),
     );
@@ -54,6 +58,7 @@ class _WorldScreenState extends State<WorldScreen> {
   late final Player player;
   AppView _currentView = AppView.main;
   bool _showShop = false;
+  List<ItemModel> _currentShopItems = getRandomShopItems();
 
   @override
   void initState() {
@@ -93,7 +98,7 @@ class _WorldScreenState extends State<WorldScreen> {
           return ShopScreen(
             key: const ValueKey('shop'),
             player: player,
-            itemsForSale: _placeholderShopItems,
+            itemsForSale: _currentShopItems,
             onBack: () => setState(() => _showShop = false),
             onPurchased: () => setState(() {}),
           );
@@ -101,7 +106,10 @@ class _WorldScreenState extends State<WorldScreen> {
         return WorldPhase(
           key: const ValueKey('main'),
           state: worldState,
-          onEventTapped: () => setState(() => _showShop = true),
+          onEventTapped: () => setState(() {
+            _currentShopItems = getRandomShopItems();
+            _showShop = true;
+          }),
         );
       case AppView.map:
         return WorldMapView(

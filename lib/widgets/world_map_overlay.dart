@@ -86,7 +86,7 @@ class _WorldMapViewState extends State<WorldMapView> {
                 'World Map',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 20,
+                  fontSize: 23,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -301,7 +301,7 @@ class _WorldMapContent extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: canTravel || isCurrent ? 12 : 11,
+                  fontSize: canTravel || isCurrent ? 15 : 14,
                   fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
                 ),
               ),

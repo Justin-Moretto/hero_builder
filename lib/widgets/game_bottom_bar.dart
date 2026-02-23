@@ -26,6 +26,7 @@ class GameBottomBar extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
+            //todo: remove/adjust text labels. Make iconography as intuitive as possible
             _NavButton(
               icon: Icons.map,
               label: 'World Map',
@@ -78,7 +79,7 @@ class _NavButton extends StatelessWidget {
                 label,
                 style: TextStyle(
                   color: Colors.grey[300],
-                  fontSize: 11,
+                  fontSize: 14,
                 ),
               ),
             ],

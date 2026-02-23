@@ -1,13 +1,22 @@
 import 'package:flutter/material.dart';
 
+import '../models/item_model.dart';
 import '../models/player.dart';
 
-/// Full-screen character and inventory view. Fills the content area.
-/// Navigation is handled by the bottom bar.
-class CharacterView extends StatelessWidget {
+/// Full-screen character and inventory view. Inventory is a grid of squircle item tiles.
+/// Tapping an item selects it; selected item shows a gold border and details below.
+class CharacterView extends StatefulWidget {
   final Player player;
 
   const CharacterView({super.key, required this.player});
+
+  @override
+  State<CharacterView> createState() => _CharacterViewState();
+}
+
+class _CharacterViewState extends State<CharacterView> {
+  /// Slot index of the currently selected inventory item, or null if none.
+  int? _selectedSlotIndex;
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +32,7 @@ class CharacterView extends StatelessWidget {
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
-                fontSize: 20,
+                fontSize: 23,
               ),
             ),
           ),
@@ -37,65 +46,216 @@ class CharacterView extends StatelessWidget {
                     'Stats',
                     style: TextStyle(
                       color: Colors.grey[300],
-                      fontSize: 12,
+                      fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  _StatRow('Health', '${player.health} / ${player.maxHealth}'),
-                  _StatRow('Energy', '${player.energy} / ${player.maxEnergy}'),
-                  _StatRow('Gold', '${player.gold}'),
+                  _StatRow('Health', '${widget.player.health} / ${widget.player.maxHealth}'),
+                  _StatRow('Energy', '${widget.player.energy} / ${widget.player.maxEnergy}'),
+                  _StatRow('Gold', '${widget.player.gold}'),
                   const SizedBox(height: 16),
                   Text(
                     'Inventory',
                     style: TextStyle(
                       color: Colors.grey[300],
-                      fontSize: 12,
+                      fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[850],
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey[700]!),
-                    ),
-                    child: player.items.isEmpty
-                        ? Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(24),
-                              child: Text(
-                                'Empty (inventory will be redone)',
-                                style: TextStyle(color: Colors.grey[500], fontSize: 14),
-                              ),
-                            ),
-                          )
-                        : Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              for (final entry in player.items.entries)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[800],
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    entry.value.name,
-                                    style: const TextStyle(color: Colors.white, fontSize: 12),
-                                  ),
-                                ),
-                            ],
-                          ),
+                  _InventoryGrid(
+                    player: widget.player,
+                    selectedSlotIndex: _selectedSlotIndex,
+                    onSlotTap: (index) {
+                      setState(() {
+                        if (_selectedSlotIndex == index) {
+                          _selectedSlotIndex = null;
+                        } else {
+                          _selectedSlotIndex = index;
+                        }
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  _ItemInfoPanel(
+                    item: _selectedSlotIndex != null
+                        ? widget.player.getItemAtSlot(_selectedSlotIndex!)
+                        : null,
                   ),
                   const SizedBox(height: 24),
                 ],
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InventoryGrid extends StatelessWidget {
+  final Player player;
+  final int? selectedSlotIndex;
+  final ValueChanged<int> onSlotTap;
+
+  const _InventoryGrid({
+    required this.player,
+    required this.selectedSlotIndex,
+    required this.onSlotTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const crossAxisCount = 5;
+    const spacing = 8.0;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = (constraints.maxWidth - spacing * (crossAxisCount - 1)) / crossAxisCount;
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: List.generate(Player.boardSize, (index) {
+            final item = player.shouldRenderItemAtSlot(index) ? player.getItemAtSlot(index) : null;
+            final isSelected = selectedSlotIndex == index;
+            return SizedBox(
+              width: width,
+              height: width,
+              child: GestureDetector(
+                onTap: () {
+                  if (item != null) onSlotTap(index);
+                },
+                child: _SquircleTile(
+                  item: item,
+                  isSelected: isSelected,
+                ),
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
+}
+
+class _SquircleTile extends StatelessWidget {
+  final ItemModel? item;
+  final bool isSelected;
+
+  const _SquircleTile({this.item, this.isSelected = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final isWeapon = item != null && item!.damage > 0;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: item != null ? Colors.grey[800] : Colors.grey[850],
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isSelected ? Colors.amber : Colors.grey[700]!,
+          width: isSelected ? 3 : 1,
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: item == null
+              ? Center(
+                  child: Icon(Icons.inventory_2_outlined, color: Colors.grey[600], size: 32),
+                )
+              : Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      item!.name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (isWeapon) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        '${item!.damage} dmg • ${item!.cooldownDisplay}s',
+                        style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                      ),
+                    ],
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Panel below the inventory showing the selected item's details.
+class _ItemInfoPanel extends StatelessWidget {
+  final ItemModel? item;
+
+  const _ItemInfoPanel({this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[850],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[700]!),
+      ),
+      child: item == null
+          ? Center(
+              child: Text(
+                'Select an item to view details',
+                style: TextStyle(color: Colors.grey[500], fontSize: 15),
+              ),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item!.name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                if (item!.damage > 0) ...[
+                  _InfoRow('Damage', '${item!.damage}'),
+                  _InfoRow('Cooldown', '${item!.cooldownDisplay}s'),
+                ],
+                if (item!.cost > 0) _InfoRow('Value', '${item!.cost} gold'),
+              ],
+            ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _InfoRow(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(color: Colors.grey[400], fontSize: 15)),
+          Text(value, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500)),
         ],
       ),
     );
@@ -115,8 +275,8 @@ class _StatRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: Colors.grey[400], fontSize: 14)),
-          Text(value, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
+          Text(label, style: TextStyle(color: Colors.grey[400], fontSize: 16)),
+          Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
         ],
       ),
     );
