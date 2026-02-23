@@ -14,8 +14,10 @@ class Player {
 
   final Map<String, ItemModel> items = {};
 
-  /// Keys of items currently equipped (used in combat). Only these items deal damage.
-  final Set<String> equippedItemKeys = {};
+  /// Equipment slots: 2 weapon (one-handed each, or 1 two-handed uses both), 1 armor, 2 consumable.
+  final List<String?> weaponSlots = [null, null];
+  String? armorSlot;
+  final List<String?> consumableSlots = [null, null];
 
   bool hasInventorySpace(int itemSize) {
     int free = board.where((key) => key == null).length;
@@ -45,7 +47,17 @@ class Player {
       if (board[i] == itemKey) board[i] = null;
     }
     items.remove(itemKey);
-    equippedItemKeys.remove(itemKey);
+    _unequipFromSlots(itemKey);
+  }
+
+  void _unequipFromSlots(String itemKey) {
+    for (int i = 0; i < weaponSlots.length; i++) {
+      if (weaponSlots[i] == itemKey) weaponSlots[i] = null;
+    }
+    if (armorSlot == itemKey) armorSlot = null;
+    for (int i = 0; i < consumableSlots.length; i++) {
+      if (consumableSlots[i] == itemKey) consumableSlots[i] = null;
+    }
   }
 
   void placeItemAtSlot(ItemModel item, int startIndex) {
@@ -162,25 +174,104 @@ class Player {
     return null;
   }
 
-  bool isEquipped(String itemKey) => equippedItemKeys.contains(itemKey);
+  bool isEquipped(String itemKey) {
+    return weaponSlots.contains(itemKey) || armorSlot == itemKey || consumableSlots.contains(itemKey);
+  }
 
-  void setEquipped(String itemKey, bool equipped) {
-    if (equipped) {
-      equippedItemKeys.add(itemKey);
-    } else {
-      equippedItemKeys.remove(itemKey);
+  /// Try to equip an item into its slot type. Returns true if equipped.
+  bool setEquipped(String itemKey, bool equipped) {
+    final item = items[itemKey];
+    if (item == null) return false;
+    if (!equipped) {
+      _unequipFromSlots(itemKey);
+      return true;
+    }
+    switch (item.slotType) {
+      case ItemSlotType.weapon:
+        if (item.isTwoHanded) {
+          weaponSlots[0] = itemKey;
+          weaponSlots[1] = itemKey;
+          return true;
+        }
+        int empty = weaponSlots.indexOf(null);
+        if (empty >= 0) {
+          weaponSlots[empty] = itemKey;
+          return true;
+        }
+        // Both slots full: if they're the same key (two-handed), replace with this one-handed
+        if (weaponSlots[0] == weaponSlots[1] && weaponSlots[0] != null) {
+          weaponSlots[0] = itemKey;
+          weaponSlots[1] = null;
+          return true;
+        }
+        return false;
+      case ItemSlotType.armor:
+        armorSlot = itemKey;
+        return true;
+      case ItemSlotType.consumable:
+        final empty = consumableSlots.indexOf(null);
+        if (empty >= 0) {
+          consumableSlots[empty] = itemKey;
+          return true;
+        }
+        return false;
     }
   }
 
-  /// Items that are equipped (have damage and cooldown for combat). Order matches board order.
-  List<ItemModel> getEquippedItems() {
+  /// Equipped weapons (deduplicated: two-handed appears once). For combat.
+  List<ItemModel> getEquippedWeapons() {
+    final keys = <String>{};
+    for (final k in weaponSlots) {
+      if (k != null) keys.add(k);
+    }
+    return keys.map((k) => items[k]).whereType<ItemModel>().where((i) => i.damage > 0).toList();
+  }
+
+  /// Equipped consumables. For combat.
+  List<ItemModel> getEquippedConsumables() {
     final list = <ItemModel>[];
-    for (final key in board) {
-      if (key != null && equippedItemKeys.contains(key)) {
-        final item = items[key];
-        if (item != null && item.damage > 0) list.add(item);
+    for (final k in consumableSlots) {
+      if (k != null) {
+        final item = items[k];
+        if (item != null) list.add(item);
       }
     }
     return list;
+  }
+
+  /// All equipped items (weapons + armor + consumables) for UI display.
+  List<ItemModel> getEquippedItems() {
+    final list = <ItemModel>[];
+    for (final k in weaponSlots) {
+      if (k != null) {
+        final item = items[k];
+        if (item != null && !list.any((e) => e.key == k)) list.add(item);
+      }
+    }
+    if (armorSlot != null) {
+      final item = items[armorSlot];
+      if (item != null) list.add(item);
+    }
+    for (final k in consumableSlots) {
+      if (k != null) {
+        final item = items[k];
+        if (item != null) list.add(item);
+      }
+    }
+    return list;
+  }
+
+  /// Whether another item of this slot type can be equipped (slot limit).
+  bool canEquipMore(ItemSlotType slotType) {
+    switch (slotType) {
+      case ItemSlotType.weapon:
+        if (weaponSlots.any((k) => k == null)) return true;
+        if (weaponSlots[0] == weaponSlots[1] && weaponSlots[0] != null) return true;
+        return false;
+      case ItemSlotType.armor:
+        return true;
+      case ItemSlotType.consumable:
+        return consumableSlots.any((k) => k == null);
+    }
   }
 }

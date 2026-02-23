@@ -77,19 +77,13 @@ class _CharacterViewState extends State<CharacterView> {
                       });
                     },
                   ),
-                  if (_selectedSlotIndex != null) ...[
-                    const SizedBox(height: 8),
-                    _EquipButton(
-                      player: widget.player,
-                      itemKey: widget.player.board[_selectedSlotIndex!],
-                      onToggled: () => setState(() {}),
-                    ),
-                  ],
                   const SizedBox(height: 16),
                   _ItemInfoPanel(
                     item: _selectedSlotIndex != null
                         ? widget.player.getItemAtSlot(_selectedSlotIndex!)
                         : null,
+                    player: widget.player,
+                    onToggled: () => setState(() {}),
                   ),
                   const SizedBox(height: 24),
                 ],
@@ -159,7 +153,6 @@ class _SquircleTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isWeapon = item != null && item!.damage > 0;
     final borderColor = isSelected
         ? Colors.amber
         : isEquipped
@@ -183,33 +176,18 @@ class _SquircleTile extends StatelessWidget {
               ? Center(
                   child: Icon(Icons.inventory_2_outlined, color: Colors.grey[600], size: 32),
                 )
-              : Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      item!.name,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+              : Center(
+                  child: Text(
+                    item!.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
                     ),
-                    if (isWeapon) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        '${item!.damage} dmg • ${item!.cooldownDisplay}s',
-                        style: TextStyle(color: Colors.grey[400], fontSize: 12),
-                      ),
-                    ],
-                    if (isEquipped)
-                      Text(
-                        'Equipped',
-                        style: TextStyle(color: Colors.green[300], fontSize: 10),
-                      ),
-                  ],
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
         ),
       ),
@@ -218,42 +196,17 @@ class _SquircleTile extends StatelessWidget {
 }
 
 /// Panel below the inventory showing the selected item's details.
-class _EquipButton extends StatelessWidget {
-  final Player player;
-  final String? itemKey;
-  final VoidCallback onToggled;
-
-  const _EquipButton({
-    required this.player,
-    required this.itemKey,
-    required this.onToggled,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (itemKey == null) return const SizedBox.shrink();
-    final item = player.getItemByKey(itemKey!);
-    if (item == null || item.damage <= 0) return const SizedBox.shrink();
-    final equipped = player.isEquipped(itemKey!);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: TextButton.icon(
-        onPressed: () {
-          player.setEquipped(itemKey!, !equipped);
-          onToggled();
-        },
-        icon: Icon(equipped ? Icons.check_circle : Icons.add_circle_outline, size: 18, color: Colors.white70),
-        label: Text(equipped ? 'Unequip' : 'Equip'),
-        style: TextButton.styleFrom(foregroundColor: Colors.white70),
-      ),
-    );
-  }
-}
-
+/// Equip/Unequip button is in the top-right of the box, same row as the item name.
 class _ItemInfoPanel extends StatelessWidget {
   final ItemModel? item;
+  final Player player;
+  final VoidCallback onToggled;
 
-  const _ItemInfoPanel({this.item});
+  const _ItemInfoPanel({
+    this.item,
+    required this.player,
+    required this.onToggled,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -275,22 +228,107 @@ class _ItemInfoPanel extends StatelessWidget {
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  item!.name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item!.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    if (item!.slotType == ItemSlotType.weapon || item!.slotType == ItemSlotType.armor || item!.slotType == ItemSlotType.consumable)
+                      _EquipChip(
+                        item: item!,
+                        player: player,
+                        onToggled: onToggled,
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 10),
-                if (item!.damage > 0) ...[
+                if (item!.slotType == ItemSlotType.weapon) ...[
+                  _InfoRow('Slot', item!.isTwoHanded ? 'Two-handed (uses 2 slots)' : 'One-handed'),
                   _InfoRow('Damage', '${item!.damage}'),
                   _InfoRow('Cooldown', '${item!.cooldownDisplay}s'),
                 ],
+                if (item!.slotType == ItemSlotType.armor)
+                  _InfoRow('Slot', 'Armor (1 slot)'),
+                if (item!.isConsumable && item!.consumableHeal > 0)
+                  _InfoRow('Use in combat', 'Tap to heal ${item!.consumableHeal} HP (consumed)'),
                 if (item!.cost > 0) _InfoRow('Value', '${item!.cost} gold'),
               ],
             ),
+    );
+  }
+}
+
+/// Orange Equip/Unequip chip in the item panel header. Respects slot limits (2 weapons, 1 armor, 2 consumables).
+class _EquipChip extends StatelessWidget {
+  final ItemModel item;
+  final Player player;
+  final VoidCallback onToggled;
+
+  const _EquipChip({
+    required this.item,
+    required this.player,
+    required this.onToggled,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final equipped = player.isEquipped(item.key);
+    final canEquip = equipped || player.canEquipMore(item.slotType);
+    return Material(
+      color: canEquip ? Colors.orange.shade700 : Colors.grey[600],
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: () {
+          if (equipped) {
+            player.setEquipped(item.key, false);
+            onToggled();
+          } else if (player.canEquipMore(item.slotType)) {
+            final ok = player.setEquipped(item.key, true);
+            if (ok) {
+              onToggled();
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('No ${item.slotType.name} slot available')),
+              );
+            }
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('No ${item.slotType.name} slot available (max ${item.slotType == ItemSlotType.weapon ? "2" : item.slotType == ItemSlotType.consumable ? "2" : "1"})')),
+            );
+          }
+        },
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                equipped ? Icons.check_circle : Icons.add_circle_outline,
+                size: 16,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                equipped ? 'Unequip' : 'Equip',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

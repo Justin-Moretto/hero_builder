@@ -3,9 +3,8 @@ import 'package:flutter/material.dart';
 import '../models/item_model.dart';
 import '../models/player.dart';
 
-/// Shop screen: back button, gold, and a grid of squircle item tiles.
-/// Purchased items go to player inventory.
-class ShopScreen extends StatelessWidget {
+/// Shop screen: back button, gold, Buy/Sell tabs. Sell only available here (in shop).
+class ShopScreen extends StatefulWidget {
   final Player player;
   final List<ItemModel> itemsForSale;
   final VoidCallback onBack;
@@ -20,6 +19,13 @@ class ShopScreen extends StatelessWidget {
   });
 
   @override
+  State<ShopScreen> createState() => _ShopScreenState();
+}
+
+class _ShopScreenState extends State<ShopScreen> {
+  int _tabIndex = 0; // 0 = Buy, 1 = Sell
+
+  @override
   Widget build(BuildContext context) {
     return Material(
       color: Colors.grey[900],
@@ -32,7 +38,7 @@ class ShopScreen extends StatelessWidget {
               child: Row(
                 children: [
                   IconButton(
-                    onPressed: onBack,
+                    onPressed: widget.onBack,
                     icon: const Icon(Icons.arrow_back, color: Colors.white),
                     tooltip: 'Back to biome',
                   ),
@@ -47,7 +53,7 @@ class ShopScreen extends StatelessWidget {
                   ),
                   const Spacer(),
                   Text(
-                    'Gold: ${player.gold}',
+                    'Gold: ${widget.player.gold}',
                     style: const TextStyle(
                       color: Colors.amber,
                       fontSize: 19,
@@ -58,25 +64,181 @@ class ShopScreen extends StatelessWidget {
               ),
             ),
             const Divider(color: Colors.grey),
-            Expanded(
-              child: GridView.builder(
-                padding: const EdgeInsets.all(16),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 1,
-                ),
-                itemCount: itemsForSale.length,
-                itemBuilder: (context, index) => _ShopItemTile(
-                  item: itemsForSale[index],
-                  player: player,
-                  onPurchased: onPurchased ?? () {},
-                ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  _ShopTab(
+                    label: 'Buy',
+                    selected: _tabIndex == 0,
+                    onTap: () => setState(() => _tabIndex = 0),
+                  ),
+                  const SizedBox(width: 12),
+                  _ShopTab(
+                    label: 'Sell',
+                    selected: _tabIndex == 1,
+                    onTap: () => setState(() => _tabIndex = 1),
+                  ),
+                ],
               ),
+            ),
+            Expanded(
+              child: _tabIndex == 0
+                  ? GridView.builder(
+                      padding: const EdgeInsets.all(16),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                        childAspectRatio: 1,
+                      ),
+                      itemCount: widget.itemsForSale.length,
+                      itemBuilder: (context, index) => _ShopItemTile(
+                        item: widget.itemsForSale[index],
+                        player: widget.player,
+                        onPurchased: widget.onPurchased ?? () {},
+                      ),
+                    )
+                  : _SellInventoryList(
+                      player: widget.player,
+                      onSold: () {
+                        setState(() {});
+                        widget.onPurchased?.call();
+                      },
+                    ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ShopTab extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ShopTab({required this.label, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? Colors.amber.shade700 : Colors.grey[800],
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.white : Colors.grey[300],
+              fontSize: 16,
+              fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Sell tab: list of player inventory items; sell for half value (only in shop).
+class _SellInventoryList extends StatelessWidget {
+  final Player player;
+  final VoidCallback onSold;
+
+  const _SellInventoryList({required this.player, required this.onSold});
+
+  @override
+  Widget build(BuildContext context) {
+    final items = <ItemModel>[];
+    for (final key in player.board) {
+      if (key != null) {
+        final item = player.getItemByKey(key);
+        if (item != null) items.add(item);
+      }
+    }
+    if (items.isEmpty) {
+      return Center(
+        child: Text(
+          'No items to sell',
+          style: TextStyle(color: Colors.grey[400], fontSize: 16),
+        ),
+      );
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: items.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      itemBuilder: (context, index) {
+        final item = items[index];
+        final sellValue = item.cost ~/ 2;
+        return _SellItemTile(
+          item: item,
+          sellValue: sellValue,
+          player: player,
+          onSold: onSold,
+        );
+      },
+    );
+  }
+}
+
+class _SellItemTile extends StatelessWidget {
+  final ItemModel item;
+  final int sellValue;
+  final Player player;
+  final VoidCallback onSold;
+
+  const _SellItemTile({
+    required this.item,
+    required this.sellValue,
+    required this.player,
+    required this.onSold,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey[850],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[700]!),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              item.name,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Text(
+            '$sellValue gold',
+            style: const TextStyle(color: Colors.amber, fontSize: 15, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(width: 12),
+          TextButton(
+            onPressed: () {
+              player.gold += sellValue;
+              player.removeItemFromBoard(item.key);
+              onSold();
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.green,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            ),
+            child: const Text('Sell'),
+          ),
+        ],
       ),
     );
   }
@@ -110,6 +272,10 @@ class _ShopItemTileState extends State<_ShopItemTile> {
         damage: widget.item.damage,
         cost: widget.item.cost,
         cooldown: widget.item.cooldown,
+        isConsumable: widget.item.isConsumable,
+        consumableHeal: widget.item.consumableHeal,
+        slotType: widget.item.slotType,
+        isTwoHanded: widget.item.isTwoHanded,
       );
       widget.player.addToBoard(copy);
     });

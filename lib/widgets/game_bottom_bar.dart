@@ -26,21 +26,23 @@ class GameBottomBar extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            //todo: remove/adjust text labels. Make iconography as intuitive as possible
             _NavButton(
               icon: Icons.map,
               label: 'World Map',
               onPressed: onMapPressed,
+              color: Colors.teal,
             ),
             _NavButton(
               icon: Icons.location_on,
               label: 'Current Biome',
               onPressed: onCurrentBiomePressed,
+              color: Colors.amber,
             ),
             _NavButton(
               icon: Icons.person,
               label: 'Character',
               onPressed: onCharacterPressed,
+              color: Colors.deepPurple,
             ),
           ],
         ),
@@ -53,33 +55,44 @@ class _NavButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onPressed;
+  final Color color;
 
   const _NavButton({
     required this.icon,
     required this.label,
     required this.onPressed,
+    required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
+    final bgColor = color.withValues(alpha: 0.3);
+    final iconColor = Color.lerp(Colors.white, color, 0.85) ?? color;
+    final textColor = Color.lerp(Colors.white, color, 0.9) ?? color;
+
     return Material(
-      color: Colors.grey[800],
-      borderRadius: BorderRadius.circular(8),
+      color: bgColor,
+      borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onPressed,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withValues(alpha: 0.7), width: 1.5),
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: Colors.white, size: 24),
+              Icon(icon, color: iconColor, size: 26),
               const SizedBox(height: 4),
               Text(
                 label,
                 style: TextStyle(
-                  color: Colors.grey[300],
-                  fontSize: 14,
+                  color: textColor,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],

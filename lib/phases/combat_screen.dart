@@ -44,18 +44,29 @@ class CombatScreen extends StatefulWidget {
 class _CombatScreenState extends State<CombatScreen> with SingleTickerProviderStateMixin {
   EnemyModel? _enemy;
   int _enemyHealth = 0;
-  /// Progress 0..1 for each hero equipped item (index matches getEquippedItems()).
+  /// Progress 0..1 for each hero combat item (index matches _getHeroItemsForCombat()).
   List<double> _heroCooldownProgress = [];
   /// Progress 0..1 for each enemy equipped item.
   List<double> _enemyCooldownProgress = [];
   bool _ended = false;
   Timer? _timer;
 
-  /// Hero items used in combat: equipped weapons, or [Unarmed] if none.
+  /// Hero items used in combat: equipped weapons (or Unarmed if none) + consumables. Unarmed check excludes consumables.
   List<ItemModel> _getHeroItemsForCombat() {
-    final equipped = widget.player.getEquippedItems();
-    if (equipped.isEmpty) return [_unarmedAbility];
-    return equipped;
+    final weapons = widget.player.getEquippedWeapons();
+    final consumables = widget.player.getEquippedConsumables();
+    final weaponList = weapons.isEmpty ? [_unarmedAbility] : weapons;
+    return [...weaponList, ...consumables];
+  }
+
+  void _onHeroConsumableTap(ItemModel item, int index) {
+    if (_ended || !mounted) return;
+    widget.player.health = (widget.player.health + item.consumableHeal).clamp(0, widget.player.maxHealth);
+    widget.player.removeItemFromBoard(item.key);
+    if (index < _heroCooldownProgress.length) {
+      _heroCooldownProgress = List.from(_heroCooldownProgress)..removeAt(index);
+    }
+    setState(() {});
   }
 
   @override
@@ -64,7 +75,7 @@ class _CombatScreenState extends State<CombatScreen> with SingleTickerProviderSt
     _enemy = getEnemyByKey(widget.eventNode.enemyKey ?? '');
     if (_enemy != null) {
       _enemyHealth = _enemy!.maxHealth;
-      _heroCooldownProgress = List.filled(_getHeroItemsForCombat().length, 0.0);
+      _heroCooldownProgress = List.generate(_getHeroItemsForCombat().length, (_) => 0.0);
       _enemyCooldownProgress = List.filled(_enemy!.equippedItems.length, 0.0);
     }
     _startBattle();
@@ -245,6 +256,7 @@ class _CombatScreenState extends State<CombatScreen> with SingleTickerProviderSt
                           items: _getHeroItemsForCombat(),
                           progress: _heroCooldownProgress,
                           isEnemy: false,
+                          onConsumableTap: _onHeroConsumableTap,
                         ),
                       ],
                     ),
@@ -356,15 +368,20 @@ class _CharacterCard extends StatelessWidget {
   }
 }
 
+/// [onConsumableTap] (item, index) for hero consumables: tap to use (consume + effect).
+typedef OnConsumableTap = void Function(ItemModel item, int index);
+
 class _EquippedItemsBar extends StatelessWidget {
   final List<ItemModel> items;
   final List<double> progress;
   final bool isEnemy;
+  final OnConsumableTap? onConsumableTap;
 
   const _EquippedItemsBar({
     required this.items,
     required this.progress,
     this.isEnemy = false,
+    this.onConsumableTap,
   });
 
   @override
@@ -403,6 +420,9 @@ class _EquippedItemsBar extends StatelessWidget {
             item: item,
             cooldownProgress: prog,
             isEnemy: isEnemy,
+            onTap: item.isConsumable && onConsumableTap != null
+                ? () => onConsumableTap!(item, index)
+                : null,
           );
         },
       ),
@@ -411,7 +431,7 @@ class _EquippedItemsBar extends StatelessWidget {
 }
 
 /// Single equipped item tile with bottom-to-top cooldown fill overlay.
-/// Background and overlay use the same size so the progress bar matches the box exactly.
+/// Consumables: no overlay, [onTap] to use (e.g. Health Potion).
 class _CooldownSquircle extends StatelessWidget {
   static const double _size = 72;
   static const double _radius = 18;
@@ -419,11 +439,13 @@ class _CooldownSquircle extends StatelessWidget {
   final ItemModel item;
   final double cooldownProgress;
   final bool isEnemy;
+  final VoidCallback? onTap;
 
   const _CooldownSquircle({
     required this.item,
     required this.cooldownProgress,
     this.isEnemy = false,
+    this.onTap,
   });
 
   @override
@@ -431,7 +453,9 @@ class _CooldownSquircle extends StatelessWidget {
     final overlayColor = isEnemy
         ? Colors.red.withValues(alpha: 0.5)
         : Colors.blue.withValues(alpha: 0.5);
-    return SizedBox(
+    final showCooldown = !item.isConsumable && item.cooldown > 0;
+
+    Widget content = SizedBox(
       width: _size,
       height: _size,
       child: ClipRRect(
@@ -469,25 +493,40 @@ class _CooldownSquircle extends StatelessWidget {
                         '${item.damage} dmg',
                         style: TextStyle(color: Colors.grey[400], fontSize: 10),
                       ),
+                    if (item.isConsumable && item.consumableHeal > 0)
+                      Text(
+                        'Tap to heal ${item.consumableHeal}',
+                        style: TextStyle(color: Colors.green[300], fontSize: 9),
+                      ),
                   ],
                 ),
               ),
             ),
-            // Cooldown overlay: same size, fills from bottom to top
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: _size * cooldownProgress.clamp(0.0, 1.0),
-              child: Container(
-                width: _size,
-                color: overlayColor,
+            // Cooldown overlay: only for weapons, same size, fills from bottom to top
+            if (showCooldown)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: _size * cooldownProgress.clamp(0.0, 1.0),
+                child: Container(
+                  width: _size,
+                  color: overlayColor,
+                ),
               ),
-            ),
           ],
         ),
       ),
     );
+
+    if (onTap != null) {
+      content = GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: content,
+      );
+    }
+    return content;
   }
 }
 
