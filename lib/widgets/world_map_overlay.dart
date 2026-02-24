@@ -13,17 +13,19 @@ const int _defaultZoomLevel = 2;
 
 /// Inline world map view: pannable canvas of biome nodes.
 /// Use in the main content area; bottom bar handles navigation.
-/// [onTravel] is called when the user travels to a biome (e.g. to switch back to main view).
+/// [onTravelToBiome] is called when the user confirms travel to a biome; the host
+/// can show a traveling screen and handle encounters before actually moving.
 class WorldMapView extends StatefulWidget {
   final WorldStateInterface state;
   final List<BiomeModel> biomes;
-  final VoidCallback? onTravel;
+  /// Called when user confirms travel to [BiomeModel]. Host shows traveling screen, then moves.
+  final void Function(BiomeModel biome)? onTravelToBiome;
 
   const WorldMapView({
     super.key,
     required this.state,
     required this.biomes,
-    this.onTravel,
+    this.onTravelToBiome,
   });
 
   @override
@@ -190,7 +192,7 @@ class _WorldMapViewState extends State<WorldMapView> {
                             currentBiomeKey: currentKey,
                             mapWidth: _mapWidth,
                             mapHeight: _mapHeight,
-                            onTravel: widget.onTravel,
+                            onTravelToBiome: widget.onTravelToBiome,
                           ),
                         );
                       },
@@ -239,7 +241,7 @@ class _WorldMapContent extends StatelessWidget {
   final String currentBiomeKey;
   final double mapWidth;
   final double mapHeight;
-  final VoidCallback? onTravel;
+  final void Function(BiomeModel biome)? onTravelToBiome;
 
   const _WorldMapContent({
     required this.state,
@@ -247,7 +249,7 @@ class _WorldMapContent extends StatelessWidget {
     required this.currentBiomeKey,
     required this.mapWidth,
     required this.mapHeight,
-    this.onTravel,
+    this.onTravelToBiome,
   });
 
   static const double _nodeRadius = 36;
@@ -311,8 +313,7 @@ class _WorldMapContent extends StatelessWidget {
           TextButton(
             onPressed: () {
               Navigator.of(dialogContext).pop();
-              state.travelToBiome(biome.key);
-              onTravel?.call();
+              onTravelToBiome?.call(biome);
             },
             child: const Text('Travel'),
           ),
