@@ -3,6 +3,8 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../game/time_of_day.dart' as game_clock;
+
 /// Result of a travel encounter roll. Shown in a popup before proceeding.
 enum TravelEncounter {
   /// No encounter; proceed to destination.
@@ -27,11 +29,26 @@ class TravelEncounterResult {
       TravelEncounterResult._(TravelEncounter.foundGold, amount);
 }
 
-/// Rolls a travel encounter: 20% slime, 20% find 20 gold, 60% none.
-TravelEncounterResult rollTravelEncounter(Random random) {
+/// Rolls a travel encounter. Hostile (slime) chance is higher at night, lower other times.
+TravelEncounterResult rollTravelEncounter(Random random, game_clock.TimeOfDay timeOfDay) {
   final r = random.nextDouble();
-  if (r < 0.20) return TravelEncounterResult.slime;
-  if (r < 0.40) return TravelEncounterResult.foundGold(20);
+  double slimeChance = 0.10;
+  double goldChance = 0.25;
+  switch (timeOfDay) {
+    case game_clock.TimeOfDay.night:
+      slimeChance = 0.40;
+      goldChance = 0.12;
+      break;
+    case game_clock.TimeOfDay.morn:
+    case game_clock.TimeOfDay.eve:
+      slimeChance = 0.15;
+      goldChance = 0.22;
+      break;
+    case game_clock.TimeOfDay.day:
+      break;
+  }
+  if (r < slimeChance) return TravelEncounterResult.slime;
+  if (r < slimeChance + goldChance) return TravelEncounterResult.foundGold(20);
   return TravelEncounterResult.none;
 }
 
@@ -41,12 +58,14 @@ class TravelingScreen extends StatefulWidget {
   final String destinationName;
   final Duration travelDuration;
   final Random random;
+  final game_clock.TimeOfDay timeOfDay;
   final void Function(TravelEncounterResult result) onComplete;
 
   const TravelingScreen({
     super.key,
     required this.destinationName,
     required this.random,
+    required this.timeOfDay,
     required this.onComplete,
     this.travelDuration = const Duration(milliseconds: 1800),
   });
@@ -69,7 +88,7 @@ class _TravelingScreenState extends State<TravelingScreen>
 
     Future.delayed(widget.travelDuration, () {
       if (!mounted) return;
-      final result = rollTravelEncounter(widget.random);
+      final result = rollTravelEncounter(widget.random, widget.timeOfDay);
       widget.onComplete(result);
     });
   }

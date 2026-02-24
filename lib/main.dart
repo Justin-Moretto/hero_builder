@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'app_theme.dart';
 import 'data/shop_items.dart';
+import 'game/time_of_day.dart' as game_clock;
 import 'game/world_state.dart';
 import 'models/biome_model.dart';
 import 'models/event_node_model.dart';
@@ -63,6 +64,9 @@ class _WorldScreenState extends State<WorldScreen> {
   /// After traveling screen finishes, we show a popup; this holds the result until user taps OK.
   TravelEncounterResult? _pendingTravelResult;
 
+  int _day = 1;
+  game_clock.TimeOfDay _timeOfDay = game_clock.TimeOfDay.morn;
+
   @override
   void initState() {
     super.initState();
@@ -80,7 +84,11 @@ class _WorldScreenState extends State<WorldScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            GameTopBar(player: player),
+            GameTopBar(
+              player: player,
+              day: _day,
+              timeOfDay: _timeOfDay,
+            ),
             Expanded(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
@@ -114,8 +122,18 @@ class _WorldScreenState extends State<WorldScreen> {
     });
   }
 
+  void _advanceHour() {
+    if (_timeOfDay.isNight) {
+      _timeOfDay = game_clock.TimeOfDay.morn;
+      _day++;
+    } else {
+      _timeOfDay = _timeOfDay.next;
+    }
+  }
+
   void _onTravelComplete(TravelEncounterResult result) {
     setState(() {
+      _advanceHour();
       _isTraveling = false;
       _pendingTravelResult = result;
     });
@@ -216,6 +234,7 @@ class _WorldScreenState extends State<WorldScreen> {
             key: const ValueKey('traveling'),
             destinationName: _travelDestinationName!,
             random: _random,
+            timeOfDay: _timeOfDay,
             onComplete: _onTravelComplete,
           );
         }

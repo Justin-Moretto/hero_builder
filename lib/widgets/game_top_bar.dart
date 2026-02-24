@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 
+import '../game/time_of_day.dart' as game_clock;
 import '../models/player.dart';
 
-/// Top bar showing HP and Energy only. Navigation is in [GameBottomBar].
+/// Top bar: first row HP/Energy; second row Day, time of day (colored), gold.
 class GameTopBar extends StatelessWidget {
   final Player player;
+  final int day;
+  final game_clock.TimeOfDay timeOfDay;
 
   const GameTopBar({
     super.key,
     required this.player,
+    required this.day,
+    required this.timeOfDay,
   });
 
   @override
@@ -21,26 +26,63 @@ class GameTopBar extends StatelessWidget {
       ),
       child: SafeArea(
         bottom: false,
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-              child: _BarLabel(
-                label: 'HP',
-                value: player.health,
-                max: player.maxHealth,
-                color: Colors.red,
-                backgroundColor: Colors.red.shade900,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: _BarLabel(
+                    label: 'HP',
+                    value: player.health,
+                    max: player.maxHealth,
+                    color: Colors.red,
+                    backgroundColor: Colors.red.shade900,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _BarLabel(
+                    label: 'Energy',
+                    value: player.energy,
+                    max: player.maxEnergy,
+                    color: Theme.of(context).colorScheme.primary,
+                    backgroundColor: Theme.of(context).colorScheme.secondary.withOpacity(0.4),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _BarLabel(
-                label: 'Energy',
-                value: player.energy,
-                max: player.maxEnergy,
-                color: Theme.of(context).colorScheme.primary,
-                backgroundColor: Theme.of(context).colorScheme.secondary.withOpacity(0.4),
-              ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Text(
+                  'Day: $day',
+                  style: TextStyle(
+                    color: Colors.grey[300],
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  timeOfDay.label,
+                  style: TextStyle(
+                    color: timeOfDay.color,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${player.gold} gold',
+                  style: TextStyle(
+                    color: Colors.amber.shade300,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
