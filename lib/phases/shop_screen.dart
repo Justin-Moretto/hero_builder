@@ -54,8 +54,8 @@ class _ShopScreenState extends State<ShopScreen> {
                   const Spacer(),
                   Text(
                     'Gold: ${widget.player.gold}',
-                    style: const TextStyle(
-                      color: Colors.amber,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
                       fontSize: 19,
                       fontWeight: FontWeight.w600,
                     ),
@@ -123,8 +123,9 @@ class _ShopTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Material(
-      color: selected ? Colors.amber.shade700 : Colors.grey[800],
+      color: selected ? colorScheme.secondary : Colors.grey[800],
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
         onTap: onTap,
@@ -223,7 +224,11 @@ class _SellItemTile extends StatelessWidget {
           ),
           Text(
             '$sellValue gold',
-            style: const TextStyle(color: Colors.amber, fontSize: 15, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.primary,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(width: 12),
           TextButton(
@@ -313,8 +318,8 @@ class _ShopItemTileState extends State<_ShopItemTile> {
           const SizedBox(height: 4),
           Text(
             '${widget.item.cost} gold',
-            style: const TextStyle(
-              color: Colors.amber,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.primary,
               fontSize: 15,
               fontWeight: FontWeight.w600,
             ),

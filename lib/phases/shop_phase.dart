@@ -254,7 +254,7 @@ class _ShopPhaseState extends State<ShopPhase> {
                   ElevatedButton(
                     onPressed: widget.onStartCombat,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
                     ),
                     child: const Text(

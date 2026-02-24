@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'app_theme.dart';
 import 'data/shop_items.dart';
 import 'game/world_state.dart';
 import 'models/event_node_model.dart';
@@ -25,21 +26,7 @@ class HeroBuilderApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Hero Builder',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        brightness: Brightness.dark,
-        textTheme: const TextTheme(
-          bodyLarge: TextStyle(fontSize: 17),
-          bodyMedium: TextStyle(fontSize: 16),
-          bodySmall: TextStyle(fontSize: 14),
-          titleLarge: TextStyle(fontSize: 23, fontWeight: FontWeight.bold),
-          titleMedium: TextStyle(fontSize: 19, fontWeight: FontWeight.w600),
-          titleSmall: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-          labelLarge: TextStyle(fontSize: 15),
-          labelMedium: TextStyle(fontSize: 14),
-          labelSmall: TextStyle(fontSize: 12),
-        ),
-      ),
+      theme: appDarkTheme,
       home: const WorldScreen(),
     );
   }
@@ -76,23 +63,31 @@ class _WorldScreenState extends State<WorldScreen> {
     final showBottomBar = !_showCombat;
     return Scaffold(
       backgroundColor: Colors.grey[900],
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          GameTopBar(player: player),
-          Expanded(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              child: _buildContent(),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            GameTopBar(player: player),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: _buildContent(),
+              ),
             ),
-          ),
-          if (showBottomBar)
-            GameBottomBar(
-              onMapPressed: () => setState(() => _currentView = AppView.map),
-              onCharacterPressed: () => setState(() => _currentView = AppView.character),
-              onCurrentBiomePressed: () => setState(() => _currentView = AppView.main),
-            ),
-        ],
+            if (showBottomBar)
+              GameBottomBar(
+                selectedIndex: _currentView == AppView.map
+                    ? 0
+                    : _currentView == AppView.main
+                        ? 1
+                        : 2,
+                onMapPressed: () => setState(() => _currentView = AppView.map),
+                onCharacterPressed: () => setState(() => _currentView = AppView.character),
+                onCurrentBiomePressed: () => setState(() => _currentView = AppView.main),
+              ),
+          ],
+        ),
       ),
     );
   }

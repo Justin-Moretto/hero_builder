@@ -8,9 +8,13 @@ class Player {
   int gold = 80;
   static const int boardSize = 10;
   static const int stashSize = 10;
+  static const int lootSize = 10;
 
-  /// Board: index -> item key or null if empty. Will be redone with new inventory.
+  /// Equipment tab: index -> item key or null if empty.
   final List<String?> board = List.filled(boardSize, null, growable: false);
+
+  /// Loot tab: extra storage (e.g. drops). Same items map.
+  final List<String?> loot = List.filled(lootSize, null, growable: false);
 
   final Map<String, ItemModel> items = {};
 
@@ -20,8 +24,27 @@ class Player {
   final List<String?> consumableSlots = [null, null];
 
   bool hasInventorySpace(int itemSize) {
-    int free = board.where((key) => key == null).length;
-    return free >= itemSize;
+    final freeBoard = board.where((key) => key == null).length;
+    final freeLoot = loot.where((key) => key == null).length;
+    return (freeBoard + freeLoot) >= itemSize;
+  }
+
+  ItemModel? getLootItemAtSlot(int index) {
+    if (index < 0 || index >= loot.length) return null;
+    final key = loot[index];
+    return key != null ? items[key] : null;
+  }
+
+  bool shouldRenderLootAtSlot(int index) => index >= 0 && index < loot.length && loot[index] != null;
+
+  void addToLoot(ItemModel item) {
+    for (var i = 0; i < loot.length; i++) {
+      if (loot[i] == null) {
+        loot[i] = item.key;
+        items[item.key] = item;
+        return;
+      }
+    }
   }
 
   void addToBoard(ItemModel item) {

@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../game/world_state.dart';
 import '../models/biome_model.dart';
 
-/// Fixed size of the world map canvas (same in portrait and landscape).
-const double _mapWidth = 2000;
+/// Fixed size of the world map canvas (square to match square map image).
+const double _mapWidth = 1200;
 const double _mapHeight = 1200;
 
 /// Five zoom levels (1x = middle). Index 2 is default.
@@ -38,6 +38,20 @@ class _WorldMapViewState extends State<WorldMapView> {
   double _viewportW = 0;
   double _viewportH = 0;
 
+  /// Scale that fits the full map in the viewport (no black bars when zoomed out).
+  double get _fitScale {
+    if (_viewportW <= 0 || _viewportH <= 0) return _zoomScales[0];
+    final scaleW = _viewportW / _mapWidth;
+    final scaleH = _viewportH / _mapHeight;
+    return scaleW < scaleH ? scaleW : scaleH;
+  }
+
+  double get _effectiveScale {
+    final base = _zoomScales[_zoomLevel];
+    final fit = _fitScale;
+    return base < fit ? fit : base;
+  }
+
   void _applyZoom() {
     if (_viewportW <= 0 || _viewportH <= 0) return;
     final m = _transformationController.value;
@@ -46,7 +60,7 @@ class _WorldMapViewState extends State<WorldMapView> {
     final ty = m.getTranslation().y;
     final cx = (_viewportW / 2 - tx) / scale;
     final cy = (_viewportH / 2 - ty) / scale;
-    final s = _zoomScales[_zoomLevel];
+    final s = _effectiveScale;
     final newTx = _viewportW / 2 - cx * s;
     final newTy = _viewportH / 2 - cy * s;
     _transformationController.value = Matrix4.identity()
@@ -66,8 +80,45 @@ class _WorldMapViewState extends State<WorldMapView> {
     _applyZoom();
   }
 
+  void _clampTransformToViewport() {
+    if (_viewportW <= 0 || _viewportH <= 0) return;
+    final m = _transformationController.value;
+    final scaleLo = _fitScale < 2.0 ? _fitScale : 2.0;
+    final scaleHi = _fitScale < 2.0 ? 2.0 : _fitScale;
+    final scale = m.getMaxScaleOnAxis().clamp(scaleLo, scaleHi);
+    final tx = m.getTranslation().x;
+    final ty = m.getTranslation().y;
+    final txMin = _viewportW - _mapWidth * scale;
+    final tyMin = _viewportH - _mapHeight * scale;
+    final txLo = txMin <= 0 ? txMin : 0.0;
+    final txHi = txMin <= 0 ? 0.0 : txMin;
+    final tyLo = tyMin <= 0 ? tyMin : 0.0;
+    final tyHi = tyMin <= 0 ? 0.0 : tyMin;
+    final txClamped = tx.clamp(txLo, txHi);
+    final tyClamped = ty.clamp(tyLo, tyHi);
+    if (txClamped != tx || tyClamped != ty || scale != m.getMaxScaleOnAxis()) {
+      _transformationController.value = Matrix4.identity()
+        ..translate(txClamped, tyClamped)
+        ..scale(scale);
+    }
+  }
+
+  void _scheduleClamp() {
+    if (_viewportW <= 0 || _viewportH <= 0) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _clampTransformToViewport();
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _transformationController.addListener(_scheduleClamp);
+  }
+
   @override
   void dispose() {
+    _transformationController.removeListener(_clampTransformToViewport);
     _transformationController.dispose();
     super.dispose();
   }
@@ -75,27 +126,14 @@ class _WorldMapViewState extends State<WorldMapView> {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.black,
+      color: Color(0xFF2C2416),
       child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'World Map',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 23,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
           Expanded(
-            child: Stack(
-              children: [
-                ValueListenableBuilder<String>(
+            child: ClipRect(
+              child: Stack(
+                children: [
+                  ValueListenableBuilder<String>(
                   valueListenable: widget.state.currentBiomeKeyNotifier,
                   builder: (context, currentKey, _) {
                     return LayoutBuilder(
@@ -118,25 +156,33 @@ class _WorldMapViewState extends State<WorldMapView> {
                           if (current != null) {
                             final nodeX = current.mapX * _mapWidth;
                             final nodeY = current.mapY * _mapHeight;
-                            final s = _zoomScales[_zoomLevel];
-                            final tx = (viewportW / 2 - nodeX * s).clamp(
-                              viewportW - _mapWidth * s,
-                              0.0,
-                            );
-                            final ty = (viewportH / 2 - nodeY * s).clamp(
-                              viewportH - _mapHeight * s,
-                              0.0,
-                            );
+                            final scaleW = viewportW / _mapWidth;
+                            final scaleH = viewportH / _mapHeight;
+                            final fitScale = scaleW < scaleH ? scaleW : scaleH;
+                            final s = _zoomScales[_zoomLevel] < fitScale ? fitScale : _zoomScales[_zoomLevel];
+                            final txMin = viewportW - _mapWidth * s;
+                            final tyMin = viewportH - _mapHeight * s;
+                            final txLo = txMin <= 0 ? txMin : 0.0;
+                            final txHi = txMin <= 0 ? 0.0 : txMin;
+                            final tyLo = tyMin <= 0 ? tyMin : 0.0;
+                            final tyHi = tyMin <= 0 ? 0.0 : tyMin;
+                            final tx = (viewportW / 2 - nodeX * s).clamp(txLo, txHi);
+                            final ty = (viewportH / 2 - nodeY * s).clamp(tyLo, tyHi);
                             _transformationController.value = Matrix4.identity()
                               ..translate(tx, ty)
                               ..scale(s);
                             _initialCenterSet = true;
                           }
                         }
+                        final fitScale = viewportW > 0 && viewportH > 0
+                            ? (viewportW / _mapWidth) < (viewportH / _mapHeight)
+                                ? viewportW / _mapWidth
+                                : viewportH / _mapHeight
+                            : 0.25;
                         return InteractiveViewer(
                           constrained: false,
                           transformationController: _transformationController,
-                          minScale: 0.25,
+                          minScale: fitScale,
                           maxScale: 2.0,
                           child: _WorldMapContent(
                             state: widget.state,
@@ -159,6 +205,8 @@ class _WorldMapViewState extends State<WorldMapView> {
                     children: [
                       FloatingActionButton.small(
                         heroTag: 'map_zoom_in',
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Colors.black87,
                         onPressed: _zoomLevel < _zoomScales.length - 1
                             ? _zoomIn
                             : null,
@@ -167,6 +215,8 @@ class _WorldMapViewState extends State<WorldMapView> {
                       const SizedBox(height: 8),
                       FloatingActionButton.small(
                         heroTag: 'map_zoom_out',
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Colors.black87,
                         onPressed: _zoomLevel > 0 ? _zoomOut : null,
                         child: const Icon(Icons.remove),
                       ),
@@ -174,6 +224,7 @@ class _WorldMapViewState extends State<WorldMapView> {
                   ),
                 ),
               ],
+            ),
             ),
           ),
         ],
@@ -221,10 +272,13 @@ class _WorldMapContent extends StatelessWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          // Opaque map background (replace with DecorationImage when you have an asset)
           Positioned.fill(
-            child: Container(
-              color: Color(0xFF2C2416),
+            child: Image.asset(
+              'assets/images/placeholder_map.jpg',
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                color: Color(0xFF2C2416),
+              ),
             ),
           ),
           CustomPaint(
@@ -234,6 +288,7 @@ class _WorldMapContent extends StatelessWidget {
               currentBiomeKey: currentBiomeKey,
               x: _x,
               y: _y,
+              lineColor: Theme.of(context).colorScheme.primary,
             ),
           ),
           for (final biome in biomes) _buildNode(context, biome, adjacent),
@@ -280,7 +335,7 @@ class _WorldMapContent extends StatelessWidget {
       height: _nodeRadius * 2,
       child: Material(
         color: isCurrent
-            ? Colors.amber.shade700
+            ? Theme.of(context).colorScheme.secondary
             : canTravel
                 ? Colors.green.shade800
                 : Colors.grey.shade700,
@@ -318,18 +373,20 @@ class _WorldMapPainter extends CustomPainter {
   final String currentBiomeKey;
   final double Function(BiomeModel) x;
   final double Function(BiomeModel) y;
+  final Color lineColor;
 
   _WorldMapPainter({
     required this.biomes,
     required this.currentBiomeKey,
     required this.x,
     required this.y,
+    required this.lineColor,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final linePaint = Paint()
-      ..color = Colors.yellow
+      ..color = lineColor
       ..strokeWidth = 5
       ..style = PaintingStyle.stroke;
 
@@ -356,6 +413,7 @@ class _WorldMapPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _WorldMapPainter oldDelegate) {
     return oldDelegate.currentBiomeKey != currentBiomeKey ||
-        oldDelegate.biomes != biomes;
+        oldDelegate.biomes != biomes ||
+        oldDelegate.lineColor != lineColor;
   }
 }

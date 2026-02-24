@@ -84,7 +84,7 @@ class _EventNodeButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isCombat = node.isCombatEncounter;
-    final color = isCombat ? Colors.red.shade700 : Colors.amber.shade800;
+    final color = isCombat ? Colors.red.shade700 : Theme.of(context).colorScheme.secondary;
     return Material(
       color: color,
       borderRadius: BorderRadius.circular(8),
