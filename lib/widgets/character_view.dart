@@ -73,7 +73,7 @@ class _CharacterViewState extends State<CharacterView>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _CharacterImagePlaceholder(),
+                  _HeroAndEquippedSlots(player: widget.player),
                   const SizedBox(height: 12),
                   Text(
                     'Stats',
@@ -167,22 +167,111 @@ class _CharacterViewState extends State<CharacterView>
   }
 }
 
-class _CharacterImagePlaceholder extends StatelessWidget {
-  static const double _size = 100;
+/// Hero image with the 5 equipped slots next to it: row of 3 (weapon, armor, weapon), row of 2 (consumables).
+class _HeroAndEquippedSlots extends StatelessWidget {
+  final Player player;
+
+  const _HeroAndEquippedSlots({required this.player});
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        width: _size,
-        height: _size,
-        decoration: BoxDecoration(
-          color: Colors.grey[850],
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[700]!),
+    const heroSize = 100.0;
+    const slotSize = 52.0;
+    const gap = 6.0;
+
+    final w0 = player.weaponSlots[0] != null ? player.getItemByKey(player.weaponSlots[0]!) : null;
+    final armor = player.armorSlot != null ? player.getItemByKey(player.armorSlot!) : null;
+    final w1 = player.weaponSlots[1] != null ? player.getItemByKey(player.weaponSlots[1]!) : null;
+    final c0 = player.consumableSlots[0] != null ? player.getItemByKey(player.consumableSlots[0]!) : null;
+    final c1 = player.consumableSlots[1] != null ? player.getItemByKey(player.consumableSlots[1]!) : null;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: heroSize,
+          height: heroSize,
+          decoration: BoxDecoration(
+            color: Colors.grey[850],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[700]!),
+          ),
+          child: Center(
+            child: Icon(Icons.person_outline, size: 48, color: Colors.grey[600]),
+          ),
         ),
-        child: Center(
-          child: Icon(Icons.person_outline, size: 48, color: Colors.grey[600]),
+        SizedBox(width: gap * 2),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _EquippedSlotTile(item: w0, size: slotSize, label: 'W'),
+                SizedBox(width: gap),
+                _EquippedSlotTile(item: armor, size: slotSize, label: 'A'),
+                SizedBox(width: gap),
+                _EquippedSlotTile(item: w1, size: slotSize, label: 'W'),
+              ],
+            ),
+            SizedBox(height: gap),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _EquippedSlotTile(item: c0, size: slotSize, label: 'C'),
+                SizedBox(width: gap),
+                _EquippedSlotTile(item: c1, size: slotSize, label: 'C'),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _EquippedSlotTile extends StatelessWidget {
+  final ItemModel? item;
+  final double size;
+  final String label;
+
+  const _EquippedSlotTile({this.item, required this.size, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: item != null ? Colors.grey[800] : Colors.grey[850],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[700]!),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(11),
+        child: Padding(
+          padding: const EdgeInsets.all(4),
+          child: item == null
+              ? Center(
+                  child: Text(
+                    label,
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                )
+              : Center(
+                  child: Text(
+                    item!.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
         ),
       ),
     );

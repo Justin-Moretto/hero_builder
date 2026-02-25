@@ -4,10 +4,12 @@ import '../models/item_model.dart';
 import '../models/player.dart';
 
 /// Shop screen: back button, gold, Buy/Sell tabs. Sell only available here (in shop).
+/// [onPurchasedItemAt] is called with the index of the bought item so the parent can remove it from stock.
 class ShopScreen extends StatefulWidget {
   final Player player;
   final List<ItemModel> itemsForSale;
   final VoidCallback onBack;
+  final void Function(int index)? onPurchasedItemAt;
   final VoidCallback? onPurchased;
 
   const ShopScreen({
@@ -15,6 +17,7 @@ class ShopScreen extends StatefulWidget {
     required this.player,
     required this.itemsForSale,
     required this.onBack,
+    this.onPurchasedItemAt,
     this.onPurchased,
   });
 
@@ -96,7 +99,10 @@ class _ShopScreenState extends State<ShopScreen> {
                       itemBuilder: (context, index) => _ShopItemTile(
                         item: widget.itemsForSale[index],
                         player: widget.player,
-                        onPurchased: widget.onPurchased ?? () {},
+                        onPurchased: () {
+                          widget.onPurchasedItemAt?.call(index);
+                          widget.onPurchased?.call();
+                        },
                       ),
                     )
                   : _SellInventoryList(
@@ -203,6 +209,7 @@ class _SellItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isEquipped = player.isEquipped(item.key);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -212,10 +219,25 @@ class _SellItemTile extends StatelessWidget {
       ),
       child: Row(
         children: [
+          if (isEquipped)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Tooltip(
+                message: 'Equipped',
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: Colors.green,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ),
           Expanded(
             child: Text(
               item.name,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -232,11 +254,13 @@ class _SellItemTile extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           TextButton(
-            onPressed: () {
-              player.gold += sellValue;
-              player.removeItemFromBoard(item.key);
-              onSold();
-            },
+            onPressed: isEquipped
+                ? null
+                : () {
+                    player.gold += sellValue;
+                    player.removeItemFromBoard(item.key);
+                    onSold();
+                  },
             style: TextButton.styleFrom(
               foregroundColor: Colors.green,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),

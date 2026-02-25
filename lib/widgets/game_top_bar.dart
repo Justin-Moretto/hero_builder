@@ -3,17 +3,19 @@ import 'package:flutter/material.dart';
 import '../game/time_of_day.dart' as game_clock;
 import '../models/player.dart';
 
-/// Top bar: first row HP/Energy; second row Day, time of day (colored), gold.
+/// Top bar: first row HP/Energy; second row Day, time, biome name (center, with pin), gold.
 class GameTopBar extends StatelessWidget {
   final Player player;
   final int day;
   final game_clock.TimeOfDay timeOfDay;
+  final String? currentBiomeName;
 
   const GameTopBar({
     super.key,
     required this.player,
     required this.day,
     required this.timeOfDay,
+    this.currentBiomeName,
   });
 
   @override
@@ -73,7 +75,29 @@ class GameTopBar extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const Spacer(),
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.push_pin,
+                        size: 16,
+                        color: Colors.grey[400],
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        currentBiomeName ?? '—',
+                        style: TextStyle(
+                          color: Colors.grey[300],
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
                 Text(
                   '${player.gold} gold',
                   style: TextStyle(

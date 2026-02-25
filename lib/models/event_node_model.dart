@@ -9,6 +9,15 @@ class EventNodeModel {
   final bool isCombatEncounter;
   final String? enemyKey;
 
+  /// Node keys that open the shop UI (buy/sell). Excludes inn and combat.
+  static const Set<String> shopNodeKeys = {
+    'blacksmith', 'potion_shop', 'tavern', 'library', 'church',
+    'basic_shop', 'luxury_shop', 'graveyard', 'monument', 'stable', 'bank',
+  };
+
+  /// True if this node opens the shop screen (has its own stock, restocked each day).
+  bool get isShop => shopNodeKeys.contains(key);
+
   const EventNodeModel({
     required this.key,
     required this.name,

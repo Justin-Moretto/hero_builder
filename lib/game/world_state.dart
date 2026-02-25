@@ -4,8 +4,10 @@ import 'package:flutter/foundation.dart';
 
 import '../data/biomes.dart';
 import '../data/event_nodes.dart';
+import '../data/shop_items.dart';
 import '../models/biome_model.dart';
 import '../models/event_node_model.dart';
+import '../models/item_model.dart';
 
 /// Interface for world UI: current biome, event nodes, travel options.
 /// Implemented by [WorldState] (standalone) and [HeroGame] (with Flame).
@@ -27,11 +29,54 @@ class WorldState implements WorldStateInterface {
   final Random _random = Random();
   /// Cleared combat encounter node keys per biome (so the node disappears after victory).
   final Map<String, Set<String>> _clearedEncountersByBiome = {};
+  /// Fixed event nodes per biome for this run. Set by [initializeRun].
+  Map<String, List<EventNodeModel>>? _biomeEventNodes;
+  /// Shop stock per shop instance (key: '${biomeKey}_${eventNodeKey}').
+  final Map<String, List<ItemModel>> _shopStock = {};
 
   final ValueNotifier<String> currentBiomeKeyNotifier = ValueNotifier('');
 
   WorldState() {
     currentBiomeKeyNotifier.value = biomes[_random.nextInt(biomes.length)].key;
+  }
+
+  /// Max event nodes per biome so the bottom bar stays visible.
+  static const int _maxNodesPerBiome = 4;
+  static const int _minNodesPerBiome = 3;
+
+  /// Populate event nodes in each biome for the whole run. Call once at Start Game.
+  /// Each biome gets 3–4 nodes (or fewer if not enough eligible).
+  void initializeRun() {
+    _biomeEventNodes = {};
+    for (final biome in biomes) {
+      final eligible = eventNodes
+          .where((n) => n.canSpawnInBiome(biome.key))
+          .toList(growable: true);
+      eligible.shuffle(_random);
+      final target = _minNodesPerBiome + _random.nextInt(2); // 3 or 4
+      final count = eligible.length.clamp(0, target);
+      _biomeEventNodes![biome.key] = eligible.take(count).toList();
+    }
+  }
+
+  /// Restock all shop nodes (day 1 and start of each new day).
+  void restockAllShops() {
+    if (_biomeEventNodes == null) return;
+    for (final entry in _biomeEventNodes!.entries) {
+      final biomeKey = entry.key;
+      for (final node in entry.value) {
+        if (node.isShop) {
+          final shopId = '${biomeKey}_${node.key}';
+          _shopStock[shopId] = getRandomShopItems(count: 6, random: _random);
+        }
+      }
+    }
+  }
+
+  /// Current stock for a shop (mutable list; remove items on purchase).
+  List<ItemModel> getShopStock(String biomeKey, String eventNodeKey) {
+    final shopId = '${biomeKey}_${eventNodeKey}';
+    return _shopStock[shopId] ?? [];
   }
 
   String get currentBiomeKey => currentBiomeKeyNotifier.value;
@@ -45,15 +90,21 @@ class WorldState implements WorldStateInterface {
   }
 
   List<EventNodeModel> getCurrentEventNodeOptions() {
+    if (_biomeEventNodes != null) {
+      final nodes = _biomeEventNodes![currentBiomeKey] ?? [];
+      final cleared = _clearedEncountersByBiome[currentBiomeKey];
+      if (cleared == null || cleared.isEmpty) return List.from(nodes);
+      return nodes.where((n) => !cleared.contains(n.key)).toList();
+    }
     final cleared = _clearedEncountersByBiome[currentBiomeKey];
     final eligible = eventNodes
         .where((n) =>
             n.canSpawnInBiome(currentBiomeKey) &&
             (cleared == null || !cleared.contains(n.key)))
         .toList(growable: false);
-    if (eligible.length <= 2) return List.from(eligible);
+    if (eligible.length <= 3) return List.from(eligible);
     eligible.shuffle(_random);
-    return eligible.take(2).toList();
+    return eligible.take(3).toList();
   }
 
   @override

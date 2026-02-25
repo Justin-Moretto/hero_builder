@@ -47,22 +47,47 @@ class WorldPhase extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  // Event node buttons (no functionality yet)
+                  // Event node buttons: column in portrait, row in landscape
                   Expanded(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        for (final node in eventNodes)
-                          _EventNodeButton(
-                            node: node,
-                            onTap: onEventTapped != null ? () => onEventTapped!(node) : null,
-                          ),
-                        if (eventNodes.length < 2)
-                          ...List.generate(
-                            2 - eventNodes.length,
-                            (_) => const SizedBox(width: 120, height: 80),
-                          ),
-                      ],
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isPortrait = MediaQuery.orientationOf(context) == Orientation.portrait;
+                        const nodeCount = 3;
+                        if (isPortrait) {
+                          return Column(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              for (final node in eventNodes)
+                                _EventNodeButton(
+                                  node: node,
+                                  onTap: onEventTapped != null ? () => onEventTapped!(node) : null,
+                                  compact: true,
+                                ),
+                              if (eventNodes.length < nodeCount)
+                                ...List.generate(
+                                  nodeCount - eventNodes.length,
+                                  (_) => const SizedBox(height: 80),
+                                ),
+                            ],
+                          );
+                        }
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            for (final node in eventNodes)
+                              _EventNodeButton(
+                                node: node,
+                                onTap: onEventTapped != null ? () => onEventTapped!(node) : null,
+                                compact: false,
+                              ),
+                            if (eventNodes.length < nodeCount)
+                              ...List.generate(
+                                nodeCount - eventNodes.length,
+                                (_) => const SizedBox(width: 120, height: 80),
+                              ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -78,8 +103,10 @@ class WorldPhase extends StatelessWidget {
 class _EventNodeButton extends StatelessWidget {
   final EventNodeModel node;
   final VoidCallback? onTap;
+  /// In portrait/column layout, button is full width and compact height.
+  final bool compact;
 
-  const _EventNodeButton({required this.node, this.onTap});
+  const _EventNodeButton({required this.node, this.onTap, this.compact = false});
 
   @override
   Widget build(BuildContext context) {
@@ -91,21 +118,37 @@ class _EventNodeButton extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
-        child: SizedBox(
-          width: 120,
-          height: 80,
-          child: Center(
-            child: Text(
-              node.name,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 17,
-                fontWeight: FontWeight.bold,
+        child: compact
+            ? SizedBox(
+                width: double.infinity,
+                height: 80,
+                child: Center(
+                  child: Text(
+                    node.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              )
+            : SizedBox(
+                width: 120,
+                height: 80,
+                child: Center(
+                  child: Text(
+                    node.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
       ),
     );
   }

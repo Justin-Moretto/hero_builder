@@ -36,8 +36,9 @@ List<ItemModel> get shopItemPool => [
 final _rng = Random();
 
 /// Returns a randomized list of [count] items from the shop pool (no duplicates).
-List<ItemModel> getRandomShopItems({int count = 6}) {
+/// If [random] is provided, uses it for shuffling (e.g. for deterministic restocks).
+List<ItemModel> getRandomShopItems({int count = 6, Random? random}) {
   final pool = List<ItemModel>.from(shopItemPool);
-  pool.shuffle(_rng);
+  pool.shuffle(random ?? _rng);
   return pool.take(count).toList();
 }

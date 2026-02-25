@@ -22,6 +22,12 @@ List<EventNodeModel> createDefaultEventNodes() => [
     biomeOptions: ['village_1', 'village_2', 'city'],
   ),
   EventNodeModel(
+    key: 'inn',
+    name: 'Inn',
+    description: 'Rest and recover your health.',
+    biomeOptions: ['village_1', 'village_2', 'city'],
+  ),
+  EventNodeModel(
     key: 'library',
     name: 'Library',
     description: 'Research and learn new abilities.',
