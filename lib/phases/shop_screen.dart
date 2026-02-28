@@ -147,6 +147,11 @@ class _ShopTab extends StatelessWidget {
   }
 }
 
+/// Shows the same item-details popup as in the shop (info only, no Buy/Sell). Used by character view "Info" button.
+void showItemInfoDialog(BuildContext context, {required ItemModel item, required Player player}) {
+  _showShopItemDetailDialog(context, item: item, player: player);
+}
+
 /// Shows a popup with full item details and a Buy or Sell button (same behavior as list row).
 void _showShopItemDetailDialog(
   BuildContext context, {

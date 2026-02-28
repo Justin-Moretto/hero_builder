@@ -1,5 +1,14 @@
 import 'item_model.dart';
 
+/// Which of the 5 loadout slots (W, A, W, C, C) for drag-to-equip.
+enum LoadoutSlot {
+  weapon0,
+  weapon1,
+  armor,
+  consumable0,
+  consumable1,
+}
+
 class Player {
   int maxHealth = 30;
   int health = 30;
@@ -68,6 +77,14 @@ class Player {
   void removeItemFromBoard(String itemKey) {
     for (int i = 0; i < board.length; i++) {
       if (board[i] == itemKey) board[i] = null;
+    }
+    items.remove(itemKey);
+    _unequipFromSlots(itemKey);
+  }
+
+  void removeItemFromLoot(String itemKey) {
+    for (int i = 0; i < loot.length; i++) {
+      if (loot[i] == itemKey) loot[i] = null;
     }
     items.remove(itemKey);
     _unequipFromSlots(itemKey);
@@ -171,6 +188,114 @@ class Player {
   }
 
   void removeItem(String itemKey) => removeItemFromBoard(itemKey);
+
+  /// Swap two board slots (for reorder). No-op if either index out of range.
+  void swapBoardSlots(int i, int j) {
+    if (i == j || i < 0 || i >= board.length || j < 0 || j >= board.length) return;
+    final a = board[i];
+    board[i] = board[j];
+    board[j] = a;
+  }
+
+  /// Swap two loot slots (for reorder). No-op if either index out of range.
+  void swapLootSlots(int i, int j) {
+    if (i == j || i < 0 || i >= loot.length || j < 0 || j >= loot.length) return;
+    final a = loot[i];
+    loot[i] = loot[j];
+    loot[j] = a;
+  }
+
+  /// Move one board slot to another; other items shift (home-screen style). No-op if indices invalid.
+  void moveBoardSlot(int from, int to) {
+    if (from == to || from < 0 || from >= board.length || to < 0 || to >= board.length) return;
+    final key = board[from];
+    board[from] = null;
+    if (from < to) {
+      for (int i = from; i < to; i++) board[i] = board[i + 1];
+    } else {
+      for (int i = from; i > to; i--) board[i] = board[i - 1];
+    }
+    board[to] = key;
+  }
+
+  /// Move one loot slot to another; other items shift. No-op if indices invalid.
+  void moveLootSlot(int from, int to) {
+    if (from == to || from < 0 || from >= loot.length || to < 0 || to >= loot.length) return;
+    final key = loot[from];
+    loot[from] = null;
+    if (from < to) {
+      for (int i = from; i < to; i++) loot[i] = loot[i + 1];
+    } else {
+      for (int i = from; i > to; i--) loot[i] = loot[i - 1];
+    }
+    loot[to] = key;
+  }
+
+  /// Reorder equipment by compact list indices (only non-null items). No empty slots in UI.
+  void reorderBoardCompact(int oldIndex, int newIndex) {
+    final list = board.where((k) => k != null).cast<String>().toList();
+    if (list.isEmpty || oldIndex == newIndex || oldIndex < 0 || oldIndex >= list.length || newIndex < 0 || newIndex >= list.length) return;
+    final key = list.removeAt(oldIndex);
+    list.insert(newIndex, key);
+    for (int i = 0; i < board.length; i++) {
+      board[i] = i < list.length ? list[i] : null;
+    }
+  }
+
+  /// Reorder loot by compact list indices (only non-null items).
+  void reorderLootCompact(int oldIndex, int newIndex) {
+    final list = loot.where((k) => k != null).cast<String>().toList();
+    if (list.isEmpty || oldIndex == newIndex || oldIndex < 0 || oldIndex >= list.length || newIndex < 0 || newIndex >= list.length) return;
+    final key = list.removeAt(oldIndex);
+    list.insert(newIndex, key);
+    for (int i = 0; i < loot.length; i++) {
+      loot[i] = i < list.length ? list[i] : null;
+    }
+  }
+
+  /// Set equipment order from compact list (writes into board).
+  void setBoardCompactOrder(List<String> orderedKeys) {
+    for (int i = 0; i < board.length; i++) {
+      board[i] = i < orderedKeys.length ? orderedKeys[i] : null;
+    }
+  }
+
+  /// Set loot order from compact list (writes into loot).
+  void setLootCompactOrder(List<String> orderedKeys) {
+    for (int i = 0; i < loot.length; i++) {
+      loot[i] = i < orderedKeys.length ? orderedKeys[i] : null;
+    }
+  }
+
+  /// Equip an item into a specific loadout slot. Returns true if equipped.
+  bool equipToLoadoutSlot(String itemKey, LoadoutSlot slot) {
+    final item = items[itemKey];
+    if (item == null) return false;
+    switch (slot) {
+      case LoadoutSlot.weapon0:
+      case LoadoutSlot.weapon1:
+        if (item.slotType != ItemSlotType.weapon) return false;
+        if (item.isTwoHanded) {
+          weaponSlots[0] = itemKey;
+          weaponSlots[1] = itemKey;
+          return true;
+        }
+        final idx = slot == LoadoutSlot.weapon0 ? 0 : 1;
+        weaponSlots[idx] = itemKey;
+        return true;
+      case LoadoutSlot.armor:
+        if (item.slotType != ItemSlotType.armor) return false;
+        armorSlot = itemKey;
+        return true;
+      case LoadoutSlot.consumable0:
+      case LoadoutSlot.consumable1:
+        if (item.slotType != ItemSlotType.consumable) return false;
+        final idx = slot == LoadoutSlot.consumable0 ? 0 : 1;
+        consumableSlots[idx] = itemKey;
+        return true;
+    }
+  }
+
 
   bool shouldHighlightSlot(int index, ItemModel? draggedItem, int? hoveredIndex, {String? ignoreItemKey}) {
     if (draggedItem == null || hoveredIndex == null) return false;

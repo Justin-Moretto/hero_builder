@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_reorderable_grid_view/widgets/widgets.dart';
 
 import '../models/item_model.dart';
 import '../models/player.dart';
+import '../phases/shop_screen.dart';
 
 /// Full-screen character and inventory view. Tabs: Equipment and Loot. Inventory is a grid of squircle item tiles.
 /// Tapping an item selects it; selected item shows accent border and details in a fixed-size panel below.
 class CharacterView extends StatefulWidget {
   final Player player;
+  final bool isInShop;
 
-  const CharacterView({super.key, required this.player});
+  const CharacterView({super.key, required this.player, this.isInShop = false});
 
   @override
   State<CharacterView> createState() => _CharacterViewState();
@@ -18,8 +21,8 @@ class _CharacterViewState extends State<CharacterView>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  /// Slot index of the currently selected item in the active tab, or null if none.
-  int? _selectedSlotIndex;
+  /// Item key of the currently selected item (survives reorder).
+  String? _selectedItemKey;
 
   @override
   void initState() {
@@ -30,7 +33,7 @@ class _CharacterViewState extends State<CharacterView>
 
   void _onTabChanged() {
     if (!_tabController.indexIsChanging) {
-      setState(() => _selectedSlotIndex = null);
+      setState(() => _selectedItemKey = null);
     }
   }
 
@@ -42,10 +45,8 @@ class _CharacterViewState extends State<CharacterView>
   }
 
   ItemModel? get _selectedItem {
-    if (_selectedSlotIndex == null) return null;
-    if (_tabController.index == 0)
-      return widget.player.getItemAtSlot(_selectedSlotIndex!);
-    return widget.player.getLootItemAtSlot(_selectedSlotIndex!);
+    if (_selectedItemKey == null) return null;
+    return widget.player.getItemByKey(_selectedItemKey!);
   }
 
   @override
@@ -92,7 +93,7 @@ class _CharacterViewState extends State<CharacterView>
                   const SizedBox(height: 16),
                   TabBar(
                     controller: _tabController,
-                    onTap: (_) => setState(() => _selectedSlotIndex = null),
+                    onTap: (_) => setState(() => _selectedItemKey = null),
                     labelColor: accent,
                     unselectedLabelColor: Colors.grey[400],
                     indicatorColor: accent,
@@ -109,41 +110,79 @@ class _CharacterViewState extends State<CharacterView>
                       final tileSize = (constraints.maxWidth -
                               spacing * (crossAxisCount - 1)) /
                           crossAxisCount;
-                      final gridHeight = 2 * tileSize + spacing;
+                      final eqKeys = widget.player.board
+                          .where((k) => k != null)
+                          .cast<String>()
+                          .toList();
+                      final lootKeys = widget.player.loot
+                          .where((k) => k != null)
+                          .cast<String>()
+                          .toList();
+                      final maxItems = eqKeys.length > lootKeys.length
+                          ? eqKeys.length
+                          : lootKeys.length;
+                      final rowCount = maxItems == 0
+                          ? 1
+                          : (maxItems + crossAxisCount - 1) ~/ crossAxisCount;
+                      const gridVerticalPadding = 12.0;
+                      final contentHeight =
+                          rowCount * tileSize + (rowCount - 1) * spacing;
+                      final gridHeight =
+                          contentHeight + 2 * gridVerticalPadding;
+                      final eqSelectedIndex = eqKeys.contains(_selectedItemKey)
+                          ? eqKeys.indexOf(_selectedItemKey!)
+                          : null;
+                      final lootSelectedIndex =
+                          lootKeys.contains(_selectedItemKey)
+                              ? lootKeys.indexOf(_selectedItemKey!)
+                              : null;
                       return SizedBox(
                         height: gridHeight,
                         child: TabBarView(
                           controller: _tabController,
+                          physics: const NeverScrollableScrollPhysics(),
                           children: [
                             _InventoryGrid(
                               player: widget.player,
                               isEquipment: true,
+                              crossAxisCount: crossAxisCount,
+                              spacing: spacing,
+                              gridHeight: gridHeight,
+                              tileSize: tileSize,
                               selectedSlotIndex: _tabController.index == 0
-                                  ? _selectedSlotIndex
+                                  ? eqSelectedIndex
                                   : null,
                               onSlotTap: (index) {
                                 setState(() {
-                                  _selectedSlotIndex =
-                                      (_selectedSlotIndex == index)
-                                          ? null
-                                          : index;
+                                  final key = eqKeys[index];
+                                  _selectedItemKey =
+                                      _selectedItemKey == key ? null : key;
                                 });
                               },
+                              onDragStarted: (index) =>
+                                  setState(() => _selectedItemKey = eqKeys[index]),
+                              onReorderDone: () => setState(() {}),
                             ),
                             _InventoryGrid(
                               player: widget.player,
                               isEquipment: false,
+                              crossAxisCount: crossAxisCount,
+                              spacing: spacing,
+                              gridHeight: gridHeight,
+                              tileSize: tileSize,
                               selectedSlotIndex: _tabController.index == 1
-                                  ? _selectedSlotIndex
+                                  ? lootSelectedIndex
                                   : null,
                               onSlotTap: (index) {
                                 setState(() {
-                                  _selectedSlotIndex =
-                                      (_selectedSlotIndex == index)
-                                          ? null
-                                          : index;
+                                  final key = lootKeys[index];
+                                  _selectedItemKey =
+                                      _selectedItemKey == key ? null : key;
                                 });
                               },
+                              onDragStarted: (index) =>
+                                  setState(() => _selectedItemKey = lootKeys[index]),
+                              onReorderDone: () => setState(() {}),
                             ),
                           ],
                         ),
@@ -151,10 +190,13 @@ class _CharacterViewState extends State<CharacterView>
                     },
                   ),
                   const SizedBox(height: 16),
-                  _ItemInfoPanel(
+                  _SelectedItemBar(
                     item: _selectedItem,
+                    selectedItemKey: _selectedItemKey,
                     player: widget.player,
-                    onToggled: () => setState(() {}),
+                    isInShop: widget.isInShop,
+                    onAction: () => setState(() {}),
+                    onItemRemoved: () => setState(() => _selectedItemKey = null),
                   ),
                   const SizedBox(height: 24),
                 ],
@@ -167,7 +209,7 @@ class _CharacterViewState extends State<CharacterView>
   }
 }
 
-/// Hero image with the 5 equipped slots next to it: row of 3 (weapon, armor, weapon), row of 2 (consumables).
+/// Hero image with the 5 equipped slots (display only). Equip/unequip via the item panel chip.
 class _HeroAndEquippedSlots extends StatelessWidget {
   final Player player;
 
@@ -179,11 +221,21 @@ class _HeroAndEquippedSlots extends StatelessWidget {
     const slotSize = 52.0;
     const gap = 6.0;
 
-    final w0 = player.weaponSlots[0] != null ? player.getItemByKey(player.weaponSlots[0]!) : null;
-    final armor = player.armorSlot != null ? player.getItemByKey(player.armorSlot!) : null;
-    final w1 = player.weaponSlots[1] != null ? player.getItemByKey(player.weaponSlots[1]!) : null;
-    final c0 = player.consumableSlots[0] != null ? player.getItemByKey(player.consumableSlots[0]!) : null;
-    final c1 = player.consumableSlots[1] != null ? player.getItemByKey(player.consumableSlots[1]!) : null;
+    final w0 = player.weaponSlots[0] != null
+        ? player.getItemByKey(player.weaponSlots[0]!)
+        : null;
+    final armor = player.armorSlot != null
+        ? player.getItemByKey(player.armorSlot!)
+        : null;
+    final w1 = player.weaponSlots[1] != null
+        ? player.getItemByKey(player.weaponSlots[1]!)
+        : null;
+    final c0 = player.consumableSlots[0] != null
+        ? player.getItemByKey(player.consumableSlots[0]!)
+        : null;
+    final c1 = player.consumableSlots[1] != null
+        ? player.getItemByKey(player.consumableSlots[1]!)
+        : null;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -198,7 +250,8 @@ class _HeroAndEquippedSlots extends StatelessWidget {
             border: Border.all(color: Colors.grey[700]!),
           ),
           child: Center(
-            child: Icon(Icons.person_outline, size: 48, color: Colors.grey[600]),
+            child:
+                Icon(Icons.person_outline, size: 48, color: Colors.grey[600]),
           ),
         ),
         SizedBox(width: gap * 2),
@@ -281,7 +334,10 @@ class _EquippedSlotTile extends StatelessWidget {
               ? Center(
                   child: Text(
                     label,
-                    style: TextStyle(color: Colors.grey[600], fontSize: 12, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600),
                   ),
                 )
               : _buildEquippedSlotContent(item!),
@@ -291,60 +347,106 @@ class _EquippedSlotTile extends StatelessWidget {
   }
 }
 
+/// Amber halo (glow only) for selection and drag. Single shadow, modest size so it doesn't stack or clip.
+final _kAmberHaloShadows = [
+  BoxShadow(
+    color: Colors.amber.withValues(alpha: 0.55),
+    blurRadius: 9,
+    spreadRadius: 2,
+    offset: Offset.zero,
+  ),
+];
+
+/// Drag feedback: glow only, no fill. Single stable instance so the package never stacks copies.
+final _kDragFeedbackDecoration = BoxDecoration(
+  color: Colors.transparent,
+  borderRadius: BorderRadius.circular(20),
+  boxShadow: _kAmberHaloShadows,
+);
+
 class _InventoryGrid extends StatelessWidget {
   final Player player;
   final bool isEquipment;
+  final int crossAxisCount;
+  final double spacing;
+  final double gridHeight;
+  final double tileSize;
   final int? selectedSlotIndex;
   final ValueChanged<int> onSlotTap;
+  final ValueChanged<int>? onDragStarted;
+  final VoidCallback? onReorderDone;
 
   const _InventoryGrid({
     required this.player,
     required this.isEquipment,
+    required this.crossAxisCount,
+    required this.spacing,
+    required this.gridHeight,
+    required this.tileSize,
     required this.selectedSlotIndex,
     required this.onSlotTap,
+    this.onDragStarted,
+    this.onReorderDone,
   });
 
   @override
   Widget build(BuildContext context) {
-    const crossAxisCount = 5;
-    const spacing = 8.0;
-    final slotCount = isEquipment ? Player.boardSize : Player.lootSize;
+    final sourceList = isEquipment ? player.board : player.loot;
+    final allKeys = sourceList.where((k) => k != null).cast<String>().toList();
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = (constraints.maxWidth - spacing * (crossAxisCount - 1)) /
-            crossAxisCount;
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children: List.generate(slotCount, (index) {
-            final item = isEquipment
-                ? (player.shouldRenderItemAtSlot(index)
-                    ? player.getItemAtSlot(index)
-                    : null)
-                : (player.shouldRenderLootAtSlot(index)
-                    ? player.getLootItemAtSlot(index)
-                    : null);
-            final isSelected = selectedSlotIndex == index;
-            final itemKey = item?.key;
-            final isEquipped = itemKey != null && player.isEquipped(itemKey);
-            return SizedBox(
-              width: width,
-              height: width,
-              child: GestureDetector(
-                onTap: () {
-                  if (item != null) onSlotTap(index);
-                },
-                child: _SquircleTile(
-                  item: item,
-                  isSelected: isSelected,
-                  isEquipped: isEquipped,
-                ),
-              ),
-            );
-          }),
+    if (allKeys.isEmpty) {
+      return SizedBox(height: gridHeight, width: double.infinity);
+    }
+
+    final children = List<Widget>.generate(
+      allKeys.length,
+      (i) {
+        final key = allKeys[i];
+        final item = player.getItemByKey(key)!;
+        return KeyedSubtree(
+          key: ValueKey(key),
+          child: GestureDetector(
+            onTap: () => onSlotTap(i),
+            child: _SquircleTile(
+              item: item,
+              isSelected: selectedSlotIndex == i,
+              isEquipped: player.isEquipped(key),
+            ),
+          ),
         );
       },
+    );
+
+    return SizedBox(
+      height: gridHeight,
+      child: ReorderableBuilder<String>(
+          longPressDelay: const Duration(milliseconds: 225),
+          onReorder: (reorderedListFunction) {
+            final newOrder = reorderedListFunction(allKeys);
+            if (isEquipment) {
+              player.setBoardCompactOrder(newOrder);
+            } else {
+              player.setLootCompactOrder(newOrder);
+            }
+            onReorderDone?.call();
+          },
+          onDragStarted: onDragStarted,
+          feedbackScaleFactor: 1.08,
+          dragChildBoxDecoration: _kDragFeedbackDecoration,
+        builder: (reorderedChildren) => GridView(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            mainAxisSpacing: spacing,
+            crossAxisSpacing: spacing,
+            childAspectRatio: 1,
+          ),
+          children: reorderedChildren,
+        ),
+        children: children,
+      ),
     );
   }
 }
@@ -384,21 +486,14 @@ class _SquircleTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = Theme.of(context).colorScheme.primary;
-    final borderColor = isSelected
-        ? accent
-        : isEquipped
-            ? Colors.green
-            : Colors.grey[700]!;
+    final borderColor = isEquipped ? Colors.green : Colors.grey[700]!;
 
     return Container(
       decoration: BoxDecoration(
         color: item != null ? Colors.grey[800] : Colors.grey[850],
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: borderColor,
-          width: isSelected ? 3 : 1,
-        ),
+        border: Border.all(color: borderColor, width: 1),
+        boxShadow: isSelected ? _kAmberHaloShadows : null,
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(18),
@@ -416,180 +511,105 @@ class _SquircleTile extends StatelessWidget {
   }
 }
 
-/// Fixed-height panel below the inventory. Always visible; shows selected item details or placeholder.
-/// Equip/Unequip button uses app accent (amber).
-const double _kItemInfoPanelHeight = 140;
-
-class _ItemInfoPanel extends StatelessWidget {
+/// Bar below the inventory: selected item name + Info, Trash, Sell (Sell only when isInShop).
+class _SelectedItemBar extends StatelessWidget {
   final ItemModel? item;
+  final String? selectedItemKey;
   final Player player;
-  final VoidCallback onToggled;
+  final bool isInShop;
+  final VoidCallback onAction;
+  final VoidCallback? onItemRemoved;
 
-  const _ItemInfoPanel({
+  const _SelectedItemBar({
     this.item,
+    this.selectedItemKey,
     required this.player,
-    required this.onToggled,
+    required this.isInShop,
+    required this.onAction,
+    this.onItemRemoved,
   });
+
+  bool get _itemOnBoard =>
+      selectedItemKey != null && player.board.contains(selectedItemKey);
+  bool get _itemOnLoot =>
+      selectedItemKey != null && player.loot.contains(selectedItemKey);
+
+  void _trash() {
+    if (selectedItemKey == null) return;
+    if (_itemOnBoard) {
+      player.removeItemFromBoard(selectedItemKey!);
+    } else if (_itemOnLoot) {
+      player.removeItemFromLoot(selectedItemKey!);
+    }
+    onItemRemoved?.call();
+    onAction();
+  }
+
+  void _sell() {
+    if (item == null || selectedItemKey == null || !isInShop) return;
+    if (player.isEquipped(item!.key)) return;
+    final sellValue = item!.cost ~/ 2;
+    player.gold += sellValue;
+    if (_itemOnBoard) {
+      player.removeItemFromBoard(selectedItemKey!);
+    } else if (_itemOnLoot) {
+      player.removeItemFromLoot(selectedItemKey!);
+    }
+    onItemRemoved?.call();
+    onAction();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
     return Container(
       width: double.infinity,
-      height: _kItemInfoPanelHeight,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.grey[850],
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey[700]!),
       ),
-      child: item == null
-          ? Center(
-              child: Text(
-                'Select an item to view details',
-                style: TextStyle(color: Colors.grey[500], fontSize: 15),
-              ),
-            )
-          : SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          item!.name,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      if (item!.slotType == ItemSlotType.weapon ||
-                          item!.slotType == ItemSlotType.armor ||
-                          item!.slotType == ItemSlotType.consumable)
-                        _EquipChip(
-                          item: item!,
-                          player: player,
-                          onToggled: onToggled,
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  if (item!.slotType == ItemSlotType.weapon) ...[
-                    _InfoRow(
-                        'Slot',
-                        item!.isTwoHanded
-                            ? 'Two-handed (uses 2 slots)'
-                            : 'One-handed'),
-                    _InfoRow('Damage', '${item!.damage}'),
-                    _InfoRow('Cooldown', '${item!.cooldownDisplay}s'),
-                  ],
-                  if (item!.slotType == ItemSlotType.armor)
-                    _InfoRow('Slot', 'Armor (1 slot)'),
-                  if (item!.isConsumable && item!.consumableHeal > 0)
-                    _InfoRow('Use in combat',
-                        'Tap to heal ${item!.consumableHeal} HP (consumed)'),
-                  if (item!.cost > 0) _InfoRow('Value', '${item!.cost} gold'),
-                ],
-              ),
-            ),
-    );
-  }
-}
-
-/// Amber (app accent) Equip/Unequip chip in the item panel header. Respects slot limits (2 weapons, 1 armor, 2 consumables).
-class _EquipChip extends StatelessWidget {
-  final ItemModel item;
-  final Player player;
-  final VoidCallback onToggled;
-
-  const _EquipChip({
-    required this.item,
-    required this.player,
-    required this.onToggled,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final accent = Theme.of(context).colorScheme.primary;
-    final equipped = player.isEquipped(item.key);
-    final canEquip = equipped || player.canEquipMore(item.slotType);
-    return Material(
-      color: canEquip ? accent : Colors.grey[600],
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        onTap: () {
-          if (equipped) {
-            player.setEquipped(item.key, false);
-            onToggled();
-          } else if (player.canEquipMore(item.slotType)) {
-            final ok = player.setEquipped(item.key, true);
-            if (ok) {
-              onToggled();
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                    content: Text('No ${item.slotType.name} slot available')),
-              );
-            }
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                  content: Text(
-                      'No ${item.slotType.name} slot available (max ${item.slotType == ItemSlotType.weapon ? "2" : item.slotType == ItemSlotType.consumable ? "2" : "1"})')),
-            );
-          }
-        },
-        borderRadius: BorderRadius.circular(20),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                equipped ? Icons.check_circle : Icons.add_circle_outline,
-                size: 16,
-                color: Colors.white,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                equipped ? 'Unequip' : 'Equip',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _InfoRow(this.label, this.value);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: Colors.grey[400], fontSize: 15)),
-          Text(value,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500)),
+          Expanded(
+            child: Text(
+              item?.name ?? 'Select an item',
+              style: TextStyle(
+                color: item != null ? Colors.white : Colors.grey[500],
+                fontSize: 16,
+                fontWeight: item != null ? FontWeight.w600 : FontWeight.normal,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          TextButton.icon(
+            onPressed: item != null
+                ? () {
+                    showItemInfoDialog(context, item: item!, player: player);
+                  }
+                : null,
+            icon: const Icon(Icons.info_outline, size: 18),
+            label: const Text('Info'),
+          ),
+          const SizedBox(width: 4),
+          TextButton.icon(
+            onPressed: item != null ? _trash : null,
+            icon: const Icon(Icons.delete_outline, size: 18),
+            label: const Text('Trash'),
+            style: TextButton.styleFrom(foregroundColor: Colors.red[300]),
+          ),
+          if (isInShop) ...[
+            const SizedBox(width: 4),
+            TextButton.icon(
+              onPressed: item != null && !player.isEquipped(item!.key)
+                  ? _sell
+                  : null,
+              icon: const Icon(Icons.sell_outlined, size: 18),
+              label: Text(item != null ? 'Sell (${item!.cost ~/ 2})' : 'Sell'),
+              style: TextButton.styleFrom(foregroundColor: accent),
+            ),
+          ],
         ],
       ),
     );
