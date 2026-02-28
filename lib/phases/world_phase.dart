@@ -28,7 +28,6 @@ class WorldPhase extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Current biome
                   Text(
                     currentBiome?.name ?? 'Unknown',
                     style: const TextStyle(
@@ -38,37 +37,27 @@ class WorldPhase extends StatelessWidget {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Event nodes here',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
-                      fontSize: 15,
-                    ),
-                  ),
                   const SizedBox(height: 16),
-                  // Event node buttons: column in portrait, row in landscape
                   Expanded(
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         final isPortrait = MediaQuery.orientationOf(context) == Orientation.portrait;
-                        const nodeCount = 3;
                         if (isPortrait) {
-                          return Column(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              for (final node in eventNodes)
-                                _EventNodeButton(
-                                  node: node,
-                                  onTap: onEventTapped != null ? () => onEventTapped!(node) : null,
-                                  compact: true,
-                                ),
-                              if (eventNodes.length < nodeCount)
-                                ...List.generate(
-                                  nodeCount - eventNodes.length,
-                                  (_) => const SizedBox(height: 80),
-                                ),
-                            ],
+                          return SingleChildScrollView(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                for (final node in eventNodes)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 12),
+                                    child: _EventNodeButton(
+                                      node: node,
+                                      onTap: onEventTapped != null ? () => onEventTapped!(node) : null,
+                                      compact: true,
+                                    ),
+                                  ),
+                              ],
+                            ),
                           );
                         }
                         return Row(
@@ -79,11 +68,6 @@ class WorldPhase extends StatelessWidget {
                                 node: node,
                                 onTap: onEventTapped != null ? () => onEventTapped!(node) : null,
                                 compact: false,
-                              ),
-                            if (eventNodes.length < nodeCount)
-                              ...List.generate(
-                                nodeCount - eventNodes.length,
-                                (_) => const SizedBox(width: 120, height: 80),
                               ),
                           ],
                         );

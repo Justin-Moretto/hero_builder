@@ -40,12 +40,11 @@ class WorldState implements WorldStateInterface {
     currentBiomeKeyNotifier.value = biomes[_random.nextInt(biomes.length)].key;
   }
 
-  /// Max event nodes per biome so the bottom bar stays visible.
-  static const int _maxNodesPerBiome = 4;
-  static const int _minNodesPerBiome = 3;
+  /// Max event nodes per biome so the bottom bar is never cut off.
+  static const int _maxNodesPerBiome = 3;
 
   /// Populate event nodes in each biome for the whole run. Call once at Start Game.
-  /// Each biome gets 3–4 nodes (or fewer if not enough eligible).
+  /// Each biome gets at most 3 nodes so the bottom app bar always stays visible.
   void initializeRun() {
     _biomeEventNodes = {};
     for (final biome in biomes) {
@@ -53,8 +52,7 @@ class WorldState implements WorldStateInterface {
           .where((n) => n.canSpawnInBiome(biome.key))
           .toList(growable: true);
       eligible.shuffle(_random);
-      final target = _minNodesPerBiome + _random.nextInt(2); // 3 or 4
-      final count = eligible.length.clamp(0, target);
+      final count = eligible.length.clamp(0, _maxNodesPerBiome);
       _biomeEventNodes![biome.key] = eligible.take(count).toList();
     }
   }

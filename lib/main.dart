@@ -99,6 +99,8 @@ class _WorldScreenState extends State<WorldScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Bottom bar: ALWAYS visible in a biome (event nodes), shop, map, character.
+    // Hide ONLY during combat or during the traveling screen. Must never disappear on arrival.
     final showBottomBar = !_showCombat && !_isTraveling;
     return Scaffold(
       backgroundColor: Colors.grey[900],
@@ -197,8 +199,6 @@ class _WorldScreenState extends State<WorldScreen> {
     setState(() {
       _advanceHour();
       _pendingTravelResult = result;
-      // Apply arrival for non-combat so we're already in the new biome; keep
-      // _isTraveling true so the popup shows over the travel screen.
       switch (result.type) {
         case TravelEncounter.none:
           if (_travelDestinationBiomeKey != null) {
@@ -219,6 +219,8 @@ class _WorldScreenState extends State<WorldScreen> {
           // Don't travel yet; we'll arrive after combat victory.
           break;
       }
+      // Always clear traveling so bottom bar is visible in biome (and when dialog shows).
+      _isTraveling = false;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -298,6 +300,7 @@ class _WorldScreenState extends State<WorldScreen> {
         _travelDestinationBiomeKey = null;
         _travelDestinationName = null;
       }
+      _isTraveling = false; // Always visible in biome on arrival.
     });
   }
 
@@ -327,6 +330,7 @@ class _WorldScreenState extends State<WorldScreen> {
               _combatNode = null;
               _travelDestinationBiomeKey = null;
               _travelDestinationName = null;
+              _isTraveling = false;
             }),
           );
         }
