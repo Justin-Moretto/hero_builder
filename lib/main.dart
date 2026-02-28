@@ -216,6 +216,8 @@ class _WorldScreenState extends State<WorldScreen> {
           }
           break;
         case TravelEncounter.slime:
+        case TravelEncounter.bandit:
+        case TravelEncounter.skeleton:
           // Don't travel yet; we'll arrive after combat victory.
           break;
       }
@@ -244,6 +246,14 @@ class _WorldScreenState extends State<WorldScreen> {
       case TravelEncounter.slime:
         title = 'Encounter!';
         message = 'A slime blocks your path! Defeat it to continue to $destName.';
+        break;
+      case TravelEncounter.bandit:
+        title = 'Encounter!';
+        message = 'A bandit blocks your path! Defeat them to continue to $destName.';
+        break;
+      case TravelEncounter.skeleton:
+        title = 'Encounter!';
+        message = 'A skeleton blocks your path! Defeat it to continue to $destName.';
         break;
       case TravelEncounter.foundGold:
         title = 'Found Gold';
@@ -277,11 +287,19 @@ class _WorldScreenState extends State<WorldScreen> {
       switch (result.type) {
         case TravelEncounter.none:
         case TravelEncounter.foundGold:
-          // Already applied in _onTravelComplete.
           break;
         case TravelEncounter.slime:
-          _combatNode = worldState.eventNodes
-              .firstWhere((n) => n.key == 'encounter_slime');
+          _combatNode = worldState.eventNodes.firstWhere((n) => n.key == 'encounter_slime');
+          _showCombat = true;
+          _showShop = false;
+          break;
+        case TravelEncounter.bandit:
+          _combatNode = worldState.eventNodes.firstWhere((n) => n.key == 'encounter_bandit');
+          _showCombat = true;
+          _showShop = false;
+          break;
+        case TravelEncounter.skeleton:
+          _combatNode = worldState.eventNodes.firstWhere((n) => n.key == 'encounter_skeleton');
           _showCombat = true;
           _showShop = false;
           break;

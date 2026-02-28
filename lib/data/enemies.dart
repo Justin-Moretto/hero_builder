@@ -25,7 +25,8 @@ final Map<String, EnemyModel> defaultEnemies = {
     name: 'Bandit',
     maxHealth: 28,
     equippedItems: const [
-      ItemModel(key: 'bandit_dagger', name: 'Dagger', damage: 3, cost: 0, cooldown: 1.0),
+      ItemModel(key: 'bandit_dagger_1', name: 'Dagger', damage: 2, cost: 0, cooldown: 0.8, assetKey: 'dagger'),
+      ItemModel(key: 'bandit_dagger_2', name: 'Dagger', damage: 2, cost: 0, cooldown: 0.8, assetKey: 'dagger'),
     ],
   ),
 };

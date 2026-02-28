@@ -1,0 +1,2 @@
+# Place item images here: dagger.png, short_sword.png, long_sword.png, etc.
+# Use item key from shop_items.dart (e.g. health_potion.png). Square PNG recommended (e.g. 32x32 placeholder or 256x256).

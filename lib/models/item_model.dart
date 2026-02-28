@@ -20,6 +20,8 @@ class ItemModel {
   final ItemSlotType slotType;
   /// If true (weapons only), this item uses both weapon slots (two-handed). Otherwise one-handed.
   final bool isTwoHanded;
+  /// Template key for asset lookup (e.g. "dagger"). Set when buying so instance key "dagger_123" still maps to dagger.png.
+  final String? assetKey;
 
   const ItemModel({
     required this.key,
@@ -31,8 +33,18 @@ class ItemModel {
     this.consumableHeal = 0,
     ItemSlotType? slotType,
     this.isTwoHanded = false,
+    this.assetKey,
   }) : slotType = slotType ?? (isConsumable ? ItemSlotType.consumable : (damage > 0 ? ItemSlotType.weapon : ItemSlotType.armor));
 
   /// Cooldown formatted to one decimal place.
   String get cooldownDisplay => cooldown.toStringAsFixed(1);
+
+  /// Path to item image under assets/images/items/, or null if no asset key. Use with Image.asset and errorBuilder fallback.
+  static const String itemImagesPrefix = 'assets/images/items/';
+
+  String? get itemImagePath {
+    final k = assetKey ?? key;
+    if (k.isEmpty) return null;
+    return '$itemImagesPrefix$k.png';
+  }
 }

@@ -7,11 +7,10 @@ import '../game/time_of_day.dart' as game_clock;
 
 /// Result of a travel encounter roll. Shown in a popup before proceeding.
 enum TravelEncounter {
-  /// No encounter; proceed to destination.
   none,
-  /// Random slime encounter; user must fight before arriving.
   slime,
-  /// Found gold on the road; add [goldAmount] then proceed.
+  bandit,
+  skeleton,
   foundGold,
 }
 
@@ -24,31 +23,44 @@ class TravelEncounterResult {
 
   static const TravelEncounterResult none = TravelEncounterResult._(TravelEncounter.none);
   static const TravelEncounterResult slime = TravelEncounterResult._(TravelEncounter.slime);
+  static const TravelEncounterResult bandit = TravelEncounterResult._(TravelEncounter.bandit);
+  static const TravelEncounterResult skeleton = TravelEncounterResult._(TravelEncounter.skeleton);
 
   static TravelEncounterResult foundGold(int amount) =>
       TravelEncounterResult._(TravelEncounter.foundGold, amount);
 }
 
-/// Rolls a travel encounter. Hostile (slime) chance is higher at night, lower other times.
+/// Pool of hostile travel encounters. Weights can be tuned later by location/time.
+/// Bandit at least as likely as slime; skeleton in the mix.
+const List<TravelEncounterResult> _hostilePool = [
+  TravelEncounterResult.slime,
+  TravelEncounterResult.bandit,
+  TravelEncounterResult.bandit,
+  TravelEncounterResult.skeleton,
+];
+
+/// Rolls a travel encounter. Hostile chance is higher at night; when hostile, picks from pool (bandit 2x, slime 1x, skeleton 1x).
 TravelEncounterResult rollTravelEncounter(Random random, game_clock.TimeOfDay timeOfDay) {
   final r = random.nextDouble();
-  double slimeChance = 0.10;
+  double hostileChance = 0.10;
   double goldChance = 0.25;
   switch (timeOfDay) {
     case game_clock.TimeOfDay.night:
-      slimeChance = 0.40;
+      hostileChance = 0.40;
       goldChance = 0.12;
       break;
     case game_clock.TimeOfDay.morn:
     case game_clock.TimeOfDay.eve:
-      slimeChance = 0.15;
+      hostileChance = 0.15;
       goldChance = 0.22;
       break;
     case game_clock.TimeOfDay.day:
       break;
   }
-  if (r < slimeChance) return TravelEncounterResult.slime;
-  if (r < slimeChance + goldChance) return TravelEncounterResult.foundGold(20);
+  if (r < hostileChance) {
+    return _hostilePool[random.nextInt(_hostilePool.length)];
+  }
+  if (r < hostileChance + goldChance) return TravelEncounterResult.foundGold(20);
   return TravelEncounterResult.none;
 }
 

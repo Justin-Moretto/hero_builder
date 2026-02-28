@@ -238,6 +238,31 @@ class _EquippedSlotTile extends StatelessWidget {
 
   const _EquippedSlotTile({this.item, required this.size, required this.label});
 
+  Widget _buildEquippedSlotContent(ItemModel item) {
+    final path = item.itemImagePath;
+    final textContent = Center(
+      child: Text(
+        item.name,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
+        textAlign: TextAlign.center,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+    if (path != null) {
+      return Image.asset(
+        path,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => textContent,
+      );
+    }
+    return textContent;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -259,19 +284,7 @@ class _EquippedSlotTile extends StatelessWidget {
                     style: TextStyle(color: Colors.grey[600], fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                 )
-              : Center(
-                  child: Text(
-                    item!.name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
+              : _buildEquippedSlotContent(item!),
         ),
       ),
     );
@@ -344,6 +357,31 @@ class _SquircleTile extends StatelessWidget {
   const _SquircleTile(
       {this.item, this.isSelected = false, this.isEquipped = false});
 
+  Widget _buildItemContent(ItemModel item) {
+    final textContent = Center(
+      child: Text(
+        item.name,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+        textAlign: TextAlign.center,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+    final path = item.itemImagePath;
+    if (path != null) {
+      return Image.asset(
+        path,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => textContent,
+      );
+    }
+    return textContent;
+  }
+
   @override
   Widget build(BuildContext context) {
     final accent = Theme.of(context).colorScheme.primary;
@@ -371,19 +409,7 @@ class _SquircleTile extends StatelessWidget {
                   child: Icon(Icons.inventory_2_outlined,
                       color: Colors.grey[600], size: 32),
                 )
-              : Center(
-                  child: Text(
-                    item!.name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
+              : _buildItemContent(item!),
         ),
       ),
     );

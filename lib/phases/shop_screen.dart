@@ -87,16 +87,11 @@ class _ShopScreenState extends State<ShopScreen> {
             ),
             Expanded(
               child: _tabIndex == 0
-                  ? GridView.builder(
+                  ? ListView.separated(
                       padding: const EdgeInsets.all(16),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        mainAxisSpacing: 12,
-                        crossAxisSpacing: 12,
-                        childAspectRatio: 1,
-                      ),
                       itemCount: widget.itemsForSale.length,
-                      itemBuilder: (context, index) => _ShopItemTile(
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) => _BuyItemTile(
                         item: widget.itemsForSale[index],
                         player: widget.player,
                         onPurchased: () {
@@ -147,6 +142,117 @@ class _ShopTab extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Shows a popup with full item details and a Buy or Sell button (same behavior as list row).
+void _showShopItemDetailDialog(
+  BuildContext context, {
+  required ItemModel item,
+  required Player player,
+  bool isSell = false,
+  int? sellValue,
+  VoidCallback? onSell,
+  VoidCallback? onBuy,
+}) {
+  final isEquipped = isSell && player.isEquipped(item.key);
+  final canSell = isSell && !isEquipped;
+  final canBuy = !isSell && player.gold >= item.cost && player.hasInventorySpace(1);
+
+  showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Row(
+        children: [
+          if (item.itemImagePath != null) ...[
+            SizedBox(
+              width: 48,
+              height: 48,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  item.itemImagePath!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+          ],
+          Expanded(child: Text(item.name)),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (item.slotType == ItemSlotType.weapon) ...[
+              _DetailRow('Slot', item.isTwoHanded ? 'Two-handed (uses 2 slots)' : 'One-handed'),
+              _DetailRow('Damage', '${item.damage}'),
+              _DetailRow('Cooldown', '${item.cooldownDisplay}s'),
+            ],
+            if (item.slotType == ItemSlotType.armor)
+              _DetailRow('Slot', 'Armor (1 slot)'),
+            if (item.isConsumable && item.consumableHeal > 0)
+              _DetailRow('Use in combat', 'Tap to heal ${item.consumableHeal} HP (consumed)'),
+            if (isSell && sellValue != null)
+              _DetailRow('Sell value', '$sellValue gold')
+            else if (item.cost > 0)
+              _DetailRow('Value', '${item.cost} gold'),
+            if (isSell && isEquipped)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text('Equipped — unequip to sell.', style: TextStyle(color: Colors.grey, fontSize: 13)),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Close'),
+        ),
+        if (isSell && onSell != null)
+          TextButton(
+            onPressed: canSell
+                ? () {
+                    onSell();
+                    Navigator.of(ctx).pop();
+                  }
+                : null,
+            child: const Text('Sell'),
+          )
+        else if (!isSell && onBuy != null)
+          TextButton(
+            onPressed: canBuy ? onBuy : null,
+            child: const Text('Buy'),
+          ),
+      ],
+    ),
+  );
+}
+
+class _DetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _DetailRow(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+          const SizedBox(width: 16),
+          Flexible(child: Text(value, style: const TextStyle(fontSize: 14), textAlign: TextAlign.end)),
+        ],
       ),
     );
   }
@@ -210,16 +316,47 @@ class _SellItemTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isEquipped = player.isEquipped(item.key);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.grey[850],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[700]!),
+    final sellValue = item.cost ~/ 2;
+    return InkWell(
+      onTap: () => _showShopItemDetailDialog(
+        context,
+        item: item,
+        player: player,
+        isSell: true,
+        sellValue: sellValue,
+        onSell: () {
+          player.gold += sellValue;
+          player.removeItemFromBoard(item.key);
+          onSold();
+        },
       ),
-      child: Row(
-        children: [
-          if (isEquipped)
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.grey[850],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey[700]!),
+        ),
+        child: Row(
+          children: [
+            if (item.itemImagePath != null)
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.asset(
+                      item.itemImagePath!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                    ),
+                  ),
+                ),
+              ),
+            if (isEquipped)
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: Tooltip(
@@ -269,26 +406,28 @@ class _SellItemTile extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ),
+  );
   }
 }
 
-class _ShopItemTile extends StatefulWidget {
+/// Buy tab: one row per item (image, name, stats, cost, Buy), scrollable list.
+class _BuyItemTile extends StatefulWidget {
   final ItemModel item;
   final Player player;
   final VoidCallback onPurchased;
 
-  const _ShopItemTile({
+  const _BuyItemTile({
     required this.item,
     required this.player,
     required this.onPurchased,
   });
 
   @override
-  State<_ShopItemTile> createState() => _ShopItemTileState();
+  State<_BuyItemTile> createState() => _BuyItemTileState();
 }
 
-class _ShopItemTileState extends State<_ShopItemTile> {
+class _BuyItemTileState extends State<_BuyItemTile> {
   void _buy() {
     if (widget.player.gold < widget.item.cost) return;
     if (!widget.player.hasInventorySpace(1)) return;
@@ -305,6 +444,7 @@ class _ShopItemTileState extends State<_ShopItemTile> {
         consumableHeal: widget.item.consumableHeal,
         slotType: widget.item.slotType,
         isTwoHanded: widget.item.isTwoHanded,
+        assetKey: widget.item.assetKey ?? widget.item.key,
       );
       widget.player.addToBoard(copy);
     });
@@ -317,71 +457,85 @@ class _ShopItemTileState extends State<_ShopItemTile> {
     final hasSpace = widget.player.hasInventorySpace(1);
     final canBuy = canAfford && hasSpace;
     final isWeapon = widget.item.damage > 0;
+    final colorScheme = Theme.of(context).colorScheme;
 
-    return _SquircleCard(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            widget.item.name,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
+    return InkWell(
+      onTap: () => _showShopItemDetailDialog(
+        context,
+        item: widget.item,
+        player: widget.player,
+        onBuy: () {
+          _buy();
+          if (context.mounted) Navigator.of(context).pop();
+        },
+      ),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.grey[850],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey[700]!),
+        ),
+        child: Row(
+          children: [
+            if (widget.item.itemImagePath != null)
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.asset(
+                      widget.item.itemImagePath!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                    ),
+                  ),
+                ),
+              ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    widget.item.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (isWeapon) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      '${widget.item.damage} dmg • ${widget.item.cooldownDisplay}s',
+                      style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                    ),
+                  ],
+                ],
+              ),
             ),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 6),
-          if (isWeapon)
             Text(
-              '${widget.item.damage} dmg • ${widget.item.cooldownDisplay}s',
-              style: TextStyle(color: Colors.grey[400], fontSize: 14),
+              '${widget.item.cost} gold',
+              style: TextStyle(
+                color: colorScheme.primary,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          const SizedBox(height: 4),
-          Text(
-            '${widget.item.cost} gold',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.primary,
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
+            const SizedBox(width: 12),
+            TextButton(
+              onPressed: canBuy ? _buy : null,
+              style: TextButton.styleFrom(
+                foregroundColor: colorScheme.secondary,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              ),
+              child: const Text('Buy'),
             ),
-          ),
-          const SizedBox(height: 8),
-          TextButton(
-            onPressed: canBuy ? _buy : null,
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              minimumSize: Size.zero,
-            ),
-            child: const Text('Buy'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Rounded square (squircle-style) container for grid items.
-class _SquircleCard extends StatelessWidget {
-  final Widget child;
-
-  const _SquircleCard({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.grey[850],
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey[700]!, width: 1),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: child,
+          ],
         ),
       ),
     );

@@ -207,6 +207,8 @@ class _CombatScreenState extends State<CombatScreen> with SingleTickerProviderSt
       );
     }
 
+    final isPortrait = MediaQuery.orientationOf(context) == Orientation.portrait;
+
     return Material(
       color: Colors.grey[900],
       child: SafeArea(
@@ -229,67 +231,90 @@ class _CombatScreenState extends State<CombatScreen> with SingleTickerProviderSt
                 ],
               ),
             ),
+            // Top: enemy abilities only
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  '${_enemy!.name} abilities',
+                  style: const TextStyle(color: Colors.white70, fontSize: 14),
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            _EquippedItemsBar(
+              items: _enemy!.equippedItems,
+              progress: _enemyCooldownProgress,
+              isEnemy: true,
+            ),
+            const SizedBox(height: 12),
+            // Middle: character art + health bars (layout by orientation)
             Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _CharacterCard(
-                          name: 'Hero',
-                          currentHealth: widget.player.health,
-                          maxHealth: widget.player.maxHealth,
-                          isEnemy: false,
-                        ),
-                        const SizedBox(height: 12),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 8),
-                          child: Text(
-                            'Abilities',
-                            style: TextStyle(color: Colors.white70, fontSize: 14),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        _EquippedItemsBar(
-                          items: _getHeroItemsForCombat(),
-                          progress: _heroCooldownProgress,
-                          isEnemy: false,
-                          onConsumableTap: _onHeroConsumableTap,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
+              child: isPortrait
+                  ? Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         _CharacterCard(
                           name: _enemy!.name,
                           currentHealth: _enemyHealth,
                           maxHealth: _enemy!.maxHealth,
                           isEnemy: true,
+                          nameOnTop: true,
+                          artOnTop: false,
                         ),
-                        const SizedBox(height: 12),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: Text(
-                            '${_enemy!.name} abilities',
-                            style: const TextStyle(color: Colors.white70, fontSize: 14),
+                        const SizedBox(height: 24),
+                        _CharacterCard(
+                          name: 'Hero',
+                          currentHealth: widget.player.health,
+                          maxHealth: widget.player.maxHealth,
+                          isEnemy: false,
+                          nameOnTop: false,
+                          artOnTop: false,
+                        ),
+                      ],
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: _CharacterCard(
+                            name: 'Hero',
+                            currentHealth: widget.player.health,
+                            maxHealth: widget.player.maxHealth,
+                            isEnemy: false,
+                            artOnTop: true,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        _EquippedItemsBar(
-                          items: _enemy!.equippedItems,
-                          progress: _enemyCooldownProgress,
-                          isEnemy: true,
+                        Expanded(
+                          child: _CharacterCard(
+                            name: _enemy!.name,
+                            currentHealth: _enemyHealth,
+                            maxHealth: _enemy!.maxHealth,
+                            isEnemy: true,
+                            artOnTop: true,
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                ],
+            ),
+            const SizedBox(height: 12),
+            // Bottom: hero abilities (easy thumb access)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  'Abilities',
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                ),
               ),
+            ),
+            const SizedBox(height: 4),
+            _EquippedItemsBar(
+              items: _getHeroItemsForCombat(),
+              progress: _heroCooldownProgress,
+              isEnemy: false,
+              onConsumableTap: _onHeroConsumableTap,
             ),
             const SizedBox(height: 16),
           ],
@@ -299,71 +324,91 @@ class _CombatScreenState extends State<CombatScreen> with SingleTickerProviderSt
   }
 }
 
+/// Portrait: [nameOnTop] true = name, art, hp (enemy); false = hp, art, name (hero).
+/// Landscape: [artOnTop] true = art, name, hp.
 class _CharacterCard extends StatelessWidget {
   final String name;
   final int currentHealth;
   final int maxHealth;
   final bool isEnemy;
+  final bool nameOnTop;
+  final bool artOnTop;
 
   const _CharacterCard({
     required this.name,
     required this.currentHealth,
     required this.maxHealth,
     required this.isEnemy,
+    this.nameOnTop = true,
+    this.artOnTop = false,
   });
+
+  Widget _buildArt() {
+    return Container(
+      width: 80,
+      height: 80,
+      decoration: BoxDecoration(
+        color: isEnemy ? Colors.red.shade900 : Colors.blue.shade900,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey[700]!, width: 2),
+      ),
+      child: Icon(
+        isEnemy ? Icons.person_off : Icons.person,
+        size: 48,
+        color: Colors.white70,
+      ),
+    );
+  }
+
+  Widget _buildName() {
+    return Text(
+      name,
+      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16),
+    );
+  }
+
+  Widget _buildHealthBar() {
+    final fraction = maxHealth > 0 ? (currentHealth / maxHealth).clamp(0.0, 1.0) : 0.0;
+    return SizedBox(
+      width: 120,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: fraction,
+              backgroundColor: Colors.grey[800],
+              valueColor: AlwaysStoppedAnimation<Color>(
+                fraction > 0.25 ? Colors.green : Colors.red,
+              ),
+              minHeight: 12,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '$currentHealth / $maxHealth',
+            style: TextStyle(color: Colors.grey[400], fontSize: 12),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final fraction = maxHealth > 0 ? (currentHealth / maxHealth).clamp(0.0, 1.0) : 0.0;
+    final List<Widget> ordered;
+    if (artOnTop) {
+      ordered = [_buildArt(), const SizedBox(height: 8), _buildName(), const SizedBox(height: 4), _buildHealthBar()];
+    } else if (nameOnTop) {
+      ordered = [_buildName(), const SizedBox(height: 8), _buildArt(), const SizedBox(height: 8), _buildHealthBar()];
+    } else {
+      ordered = [_buildHealthBar(), const SizedBox(height: 8), _buildArt(), const SizedBox(height: 8), _buildName()];
+    }
     return Column(
       mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            color: isEnemy ? Colors.red.shade900 : Colors.blue.shade900,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey[700]!, width: 2),
-          ),
-          child: Icon(
-            isEnemy ? Icons.person_off : Icons.person,
-            size: 48,
-            color: Colors.white70,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          name,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16),
-        ),
-        const SizedBox(height: 4),
-        SizedBox(
-          width: 120,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: fraction,
-                  backgroundColor: Colors.grey[800],
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    fraction > 0.25 ? Colors.green : Colors.red,
-                  ),
-                  minHeight: 12,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                '$currentHealth / $maxHealth',
-                style: TextStyle(color: Colors.grey[400], fontSize: 12),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ],
+      children: ordered,
     );
   }
 }
@@ -407,7 +452,7 @@ class _EquippedItemsBar extends StatelessWidget {
     if (items.isEmpty) return const SizedBox.shrink();
 
     return SizedBox(
-      height: 88,
+      height: 72,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -448,6 +493,52 @@ class _CooldownSquircle extends StatelessWidget {
     this.onTap,
   });
 
+  Widget _buildTileContent() {
+    final textContent = Padding(
+      padding: const EdgeInsets.all(6),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            item.name,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          if (item.damage > 0)
+            Text(
+              '${item.damage} dmg',
+              style: TextStyle(color: Colors.grey[400], fontSize: 10),
+            ),
+          if (item.isConsumable && item.consumableHeal > 0)
+            Text(
+              'Tap to heal ${item.consumableHeal}',
+              style: TextStyle(color: Colors.green[300], fontSize: 9),
+            ),
+        ],
+      ),
+    );
+    final path = item.itemImagePath;
+    if (path != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(_radius - 1),
+        child: Image.asset(
+          path,
+          fit: BoxFit.cover,
+          width: _size,
+          height: _size,
+          errorBuilder: (_, __, ___) => textContent,
+        ),
+      );
+    }
+    return textContent;
+  }
+
   @override
   Widget build(BuildContext context) {
     final overlayColor = isEnemy
@@ -472,35 +563,7 @@ class _CooldownSquircle extends StatelessWidget {
                 borderRadius: BorderRadius.circular(_radius),
                 border: Border.all(color: Colors.grey[700]!, width: 1),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(6),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      item.name,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (item.damage > 0)
-                      Text(
-                        '${item.damage} dmg',
-                        style: TextStyle(color: Colors.grey[400], fontSize: 10),
-                      ),
-                    if (item.isConsumable && item.consumableHeal > 0)
-                      Text(
-                        'Tap to heal ${item.consumableHeal}',
-                        style: TextStyle(color: Colors.green[300], fontSize: 9),
-                      ),
-                  ],
-                ),
-              ),
+              child: _buildTileContent(),
             ),
             // Cooldown overlay: only for weapons, same size, fills from bottom to top
             if (showCooldown)

@@ -18,4 +18,4 @@ flutter:
   assets:
     - assets/
     - assets/images/
-    - lib/assets/
+    - assets/images/items/
