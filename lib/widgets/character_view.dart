@@ -159,8 +159,8 @@ class _CharacterViewState extends State<CharacterView>
                                       _selectedItemKey == key ? null : key;
                                 });
                               },
-                              onDragStarted: (index) =>
-                                  setState(() => _selectedItemKey = eqKeys[index]),
+                              onDragStarted: (index) => setState(
+                                  () => _selectedItemKey = eqKeys[index]),
                               onReorderDone: () => setState(() {}),
                             ),
                             _InventoryGrid(
@@ -180,8 +180,8 @@ class _CharacterViewState extends State<CharacterView>
                                       _selectedItemKey == key ? null : key;
                                 });
                               },
-                              onDragStarted: (index) =>
-                                  setState(() => _selectedItemKey = lootKeys[index]),
+                              onDragStarted: (index) => setState(
+                                  () => _selectedItemKey = lootKeys[index]),
                               onReorderDone: () => setState(() {}),
                             ),
                           ],
@@ -196,7 +196,8 @@ class _CharacterViewState extends State<CharacterView>
                     player: widget.player,
                     isInShop: widget.isInShop,
                     onAction: () => setState(() {}),
-                    onItemRemoved: () => setState(() => _selectedItemKey = null),
+                    onItemRemoved: () =>
+                        setState(() => _selectedItemKey = null),
                   ),
                   const SizedBox(height: 24),
                 ],
@@ -420,19 +421,19 @@ class _InventoryGrid extends StatelessWidget {
     return SizedBox(
       height: gridHeight,
       child: ReorderableBuilder<String>(
-          longPressDelay: const Duration(milliseconds: 225),
-          onReorder: (reorderedListFunction) {
-            final newOrder = reorderedListFunction(allKeys);
-            if (isEquipment) {
-              player.setBoardCompactOrder(newOrder);
-            } else {
-              player.setLootCompactOrder(newOrder);
-            }
-            onReorderDone?.call();
-          },
-          onDragStarted: onDragStarted,
-          feedbackScaleFactor: 1.08,
-          dragChildBoxDecoration: _kDragFeedbackDecoration,
+        longPressDelay: const Duration(milliseconds: 225),
+        onReorder: (reorderedListFunction) {
+          final newOrder = reorderedListFunction(allKeys);
+          if (isEquipment) {
+            player.setBoardCompactOrder(newOrder);
+          } else {
+            player.setLootCompactOrder(newOrder);
+          }
+          onReorderDone?.call();
+        },
+        onDragStarted: onDragStarted,
+        feedbackScaleFactor: 1.08,
+        dragChildBoxDecoration: _kDragFeedbackDecoration,
         builder: (reorderedChildren) => GridView(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -486,7 +487,7 @@ class _SquircleTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = isEquipped ? Colors.green : Colors.grey[700]!;
+    final borderColor = isEquipped ? Colors.orange : Colors.grey[700]!;
 
     return Container(
       decoration: BoxDecoration(
@@ -559,9 +560,91 @@ class _SelectedItemBar extends StatelessWidget {
     onAction();
   }
 
+  void _toggleEquip(BuildContext context) {
+    if (item == null) return;
+    final equipped = player.isEquipped(item!.key);
+    if (equipped) {
+      player.setEquipped(item!.key, false);
+    } else if (player.canEquipMore(item!.slotType)) {
+      final ok = player.setEquipped(item!.key, true);
+      if (!ok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'No ${item!.slotType.name} slot available (max ${item!.slotType == ItemSlotType.weapon ? "2" : item!.slotType == ItemSlotType.consumable ? "2" : "1"})',
+            ),
+          ),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'No ${item!.slotType.name} slot available (max ${item!.slotType == ItemSlotType.weapon ? "2" : item!.slotType == ItemSlotType.consumable ? "2" : "1"})',
+          ),
+        ),
+      );
+    }
+    onAction();
+  }
+
+  static const _chipPadding = EdgeInsets.symmetric(horizontal: 12, vertical: 8);
+
+  Widget _actionChip(
+    BuildContext context, {
+    required VoidCallback? onPressed,
+    required IconData icon,
+    required String label,
+    Color? foregroundColor,
+    Color? borderColor,
+  }) {
+    final color = foregroundColor ?? Colors.grey[300];
+    final border = borderColor ?? Colors.grey[600]!;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: _chipPadding,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+                color: onPressed != null ? border : Colors.grey[700]!),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon,
+                  size: 18,
+                  color: onPressed != null ? color : Colors.grey[600]),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: onPressed != null ? color : Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final accent = Theme.of(context).colorScheme.primary;
+    final canShowEquip = item != null &&
+        (item!.slotType == ItemSlotType.weapon ||
+            item!.slotType == ItemSlotType.armor ||
+            item!.slotType == ItemSlotType.consumable);
+    final equipped = item != null && player.isEquipped(item!.key);
+    final canEquip =
+        canShowEquip && (equipped || player.canEquipMore(item!.slotType));
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -583,31 +666,45 @@ class _SelectedItemBar extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          TextButton.icon(
+          const SizedBox(width: 8),
+          _actionChip(
+            context,
             onPressed: item != null
-                ? () {
-                    showItemInfoDialog(context, item: item!, player: player);
-                  }
+                ? () => showItemInfoDialog(context, item: item!, player: player)
                 : null,
-            icon: const Icon(Icons.info_outline, size: 18),
-            label: const Text('Info'),
+            icon: Icons.info_outline,
+            label: 'Info',
           ),
-          const SizedBox(width: 4),
-          TextButton.icon(
+          const SizedBox(width: 6),
+          _actionChip(
+            context,
             onPressed: item != null ? _trash : null,
-            icon: const Icon(Icons.delete_outline, size: 18),
-            label: const Text('Trash'),
-            style: TextButton.styleFrom(foregroundColor: Colors.red[300]),
+            icon: Icons.delete_outline,
+            label: 'Trash',
+            foregroundColor: Colors.red[300],
+            borderColor: Colors.red[700],
           ),
+          if (canShowEquip) ...[
+            const SizedBox(width: 6),
+            _actionChip(
+              context,
+              onPressed: canEquip ? () => _toggleEquip(context) : null,
+              icon: equipped ? Icons.check_circle : Icons.add_circle_outline,
+              label: equipped ? 'Unequip' : 'Equip',
+              foregroundColor: accent,
+              borderColor: accent,
+            ),
+          ],
           if (isInShop) ...[
-            const SizedBox(width: 4),
-            TextButton.icon(
-              onPressed: item != null && !player.isEquipped(item!.key)
-                  ? _sell
-                  : null,
-              icon: const Icon(Icons.sell_outlined, size: 18),
-              label: Text(item != null ? 'Sell (${item!.cost ~/ 2})' : 'Sell'),
-              style: TextButton.styleFrom(foregroundColor: accent),
+            const SizedBox(width: 6),
+            _actionChip(
+              context,
+              onPressed:
+                  item != null && !player.isEquipped(item!.key) ? _sell : null,
+              icon: Icons.sell_outlined,
+              label: item != null ? 'Sell (${item!.cost ~/ 2})' : 'Sell',
+              foregroundColor: accent,
+              borderColor: accent,
             ),
           ],
         ],
