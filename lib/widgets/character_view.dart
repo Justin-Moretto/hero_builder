@@ -250,9 +250,17 @@ class _HeroAndEquippedSlots extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.grey[700]!),
           ),
-          child: Center(
-            child:
-                Icon(Icons.person_outline, size: 48, color: Colors.grey[600]),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(11),
+            child: Image.asset(
+              '${ItemModel.itemImagesPrefix}hero.png',
+              fit: BoxFit.cover,
+              width: heroSize,
+              height: heroSize,
+              errorBuilder: (_, __, ___) => Center(
+                child: Icon(Icons.person_outline, size: 48, color: Colors.grey[600]),
+              ),
+            ),
           ),
         ),
         SizedBox(width: gap * 2),

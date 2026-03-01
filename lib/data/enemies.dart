@@ -9,7 +9,7 @@ final Map<String, EnemyModel> defaultEnemies = {
     name: 'Slime',
     maxHealth: 15,
     equippedItems: const [
-      ItemModel(key: 'slime_bash', name: 'Bash', damage: 2, cost: 0, cooldown: 1.2),
+      ItemModel(key: 'slime_bash', name: 'Bash', damage: 2, cost: 0, cooldown: 1.2, assetKey: 'claw'),
     ],
   ),
   'skeleton': EnemyModel(
@@ -17,7 +17,7 @@ final Map<String, EnemyModel> defaultEnemies = {
     name: 'Skeleton',
     maxHealth: 22,
     equippedItems: const [
-      ItemModel(key: 'bone_sword', name: 'Bone Sword', damage: 4, cost: 0, cooldown: 1.3),
+      ItemModel(key: 'bone_sword', name: 'Bone Sword', damage: 4, cost: 0, cooldown: 1.3, assetKey: 'bone'),
     ],
   ),
   'bandit': EnemyModel(
@@ -25,8 +25,8 @@ final Map<String, EnemyModel> defaultEnemies = {
     name: 'Bandit',
     maxHealth: 28,
     equippedItems: const [
-      ItemModel(key: 'bandit_dagger_1', name: 'Dagger', damage: 2, cost: 0, cooldown: 0.8, assetKey: 'dagger'),
-      ItemModel(key: 'bandit_dagger_2', name: 'Dagger', damage: 2, cost: 0, cooldown: 0.8, assetKey: 'dagger'),
+      ItemModel(key: 'bandit_dagger_1', name: 'Dagger', damage: 2, cost: 0, cooldown: 0.8, assetKey: 'claw'),
+      ItemModel(key: 'bandit_dagger_2', name: 'Dagger', damage: 2, cost: 0, cooldown: 0.8, assetKey: 'claw'),
     ],
   ),
 };

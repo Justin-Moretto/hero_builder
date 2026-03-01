@@ -261,6 +261,7 @@ class _CombatScreenState extends State<CombatScreen> with SingleTickerProviderSt
                           isEnemy: true,
                           nameOnTop: true,
                           artOnTop: false,
+                          imageKey: _enemy!.key,
                         ),
                         const SizedBox(height: 24),
                         _CharacterCard(
@@ -270,6 +271,7 @@ class _CombatScreenState extends State<CombatScreen> with SingleTickerProviderSt
                           isEnemy: false,
                           nameOnTop: false,
                           artOnTop: false,
+                          imageKey: 'hero',
                         ),
                       ],
                     )
@@ -284,6 +286,7 @@ class _CombatScreenState extends State<CombatScreen> with SingleTickerProviderSt
                             maxHealth: widget.player.maxHealth,
                             isEnemy: false,
                             artOnTop: true,
+                            imageKey: 'hero',
                           ),
                         ),
                         Expanded(
@@ -293,6 +296,7 @@ class _CombatScreenState extends State<CombatScreen> with SingleTickerProviderSt
                             maxHealth: _enemy!.maxHealth,
                             isEnemy: true,
                             artOnTop: true,
+                            imageKey: _enemy!.key,
                           ),
                         ),
                       ],
@@ -333,6 +337,8 @@ class _CharacterCard extends StatelessWidget {
   final bool isEnemy;
   final bool nameOnTop;
   final bool artOnTop;
+  /// Asset key for portrait image under assets/images/items/ (e.g. 'hero', 'slime', 'skeleton', 'bandit').
+  final String? imageKey;
 
   const _CharacterCard({
     required this.name,
@@ -341,9 +347,15 @@ class _CharacterCard extends StatelessWidget {
     required this.isEnemy,
     this.nameOnTop = true,
     this.artOnTop = false,
+    this.imageKey,
   });
 
   Widget _buildArt() {
+    final fallbackIcon = Icon(
+      isEnemy ? Icons.person_off : Icons.person,
+      size: 48,
+      color: Colors.white70,
+    );
     return Container(
       width: 80,
       height: 80,
@@ -352,11 +364,18 @@ class _CharacterCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey[700]!, width: 2),
       ),
-      child: Icon(
-        isEnemy ? Icons.person_off : Icons.person,
-        size: 48,
-        color: Colors.white70,
-      ),
+      child: imageKey != null
+          ? ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: Image.asset(
+                '${ItemModel.itemImagesPrefix}$imageKey.png',
+                fit: BoxFit.cover,
+                width: 80,
+                height: 80,
+                errorBuilder: (_, __, ___) => fallbackIcon,
+              ),
+            )
+          : fallbackIcon,
     );
   }
 

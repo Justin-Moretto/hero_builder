@@ -11,7 +11,7 @@ List<ItemModel> get shopItemPool => [
       const ItemModel(key: 'mace', name: 'Mace', damage: 6, cost: 14, cooldown: 1.6, slotType: ItemSlotType.weapon),
       const ItemModel(key: 'spear', name: 'Spear', damage: 6, cost: 15, cooldown: 1.3, slotType: ItemSlotType.weapon),
       const ItemModel(key: 'bow', name: 'Short Bow', damage: 5, cost: 14, cooldown: 1.0, slotType: ItemSlotType.weapon),
-      const ItemModel(key: 'crossbow', name: 'Crossbow', damage: 8, cost: 20, cooldown: 2.2, slotType: ItemSlotType.weapon),
+      const ItemModel(key: 'crossbow', name: 'Crossbow', damage: 8, cost: 20, cooldown: 2.2, slotType: ItemSlotType.weapon, assetKey: 'bow'),
       const ItemModel(key: 'rapier', name: 'Rapier', damage: 3, cost: 11, cooldown: 0.6, slotType: ItemSlotType.weapon, assetKey: 'sword'),
       const ItemModel(key: 'club', name: 'Club', damage: 3, cost: 4, cooldown: 1.0, slotType: ItemSlotType.weapon),
       // Two-handed weapons (use both weapon slots)
